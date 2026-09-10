@@ -1,0 +1,39 @@
+buildscript {
+  repositories {
+    mavenCentral()
+  }
+  dependencies {
+    classpath("org.jetbrains.kotlin.plugin.compose:org.jetbrains.kotlin.plugin.compose.gradle.plugin:${kotlinVersion}")
+  }
+}
+
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
+
+group = 'expo.modules.androidglassview'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.androidglassview"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  buildFeatures {
+    compose true
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // NativeGestureUtil (claiming drags from scrolling parents). Version comes from the app.
+  implementation 'com.facebook.react:react-android'
+  // Same Compose version as @expo/ui for this Expo SDK, so apps using both resolve one runtime.
+  implementation 'androidx.compose.foundation:foundation-android:1.10.6'
+  implementation 'androidx.compose.ui:ui-android:1.10.6'
+}

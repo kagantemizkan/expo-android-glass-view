@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "expo-android-glass-view": ["../src/index"],
+      "expo-android-glass-view/*": ["../src/*"]
+    }
+  }
+}
