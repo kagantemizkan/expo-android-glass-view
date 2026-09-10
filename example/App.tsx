@@ -6,7 +6,8 @@ import {
   AndroidGlassTab,
   AndroidGlassToggle,
   AndroidGlassView,
-  useMinimizeOnScroll,
+  MinimizeOnScrollProvider,
+  useMinimizeOnScrollHandler,
 } from "expo-android-glass-view";
 import { type ReactNode, useState } from "react";
 import {
@@ -30,14 +31,23 @@ const TABS = [
 ] as const;
 
 export default function App() {
+  return (
+    // One minimize state for the list and the tab bar, as around a navigator's tabs.
+    <MinimizeOnScrollProvider>
+      <Showcase />
+    </MinimizeOnScrollProvider>
+  );
+}
+
+function Showcase() {
   const [tab, setTab] = useState(0);
   const [presses, setPresses] = useState(0);
   const [wifi, setWifi] = useState(true);
   const [bluetooth, setBluetooth] = useState(false);
   const [volume, setVolume] = useState(50);
   const press = () => setPresses((count) => count + 1);
-  // Scrolling down minimizes the tab bar, scrolling up (or touching it) brings it back.
-  const { minimized, setMinimized, onScroll } = useMinimizeOnScroll();
+  // Scrolling down minimizes the tab bar; scrolling up, or touching it, brings it back.
+  const onScroll = useMinimizeOnScrollHandler();
 
   return (
     <View style={styles.root}>
@@ -134,8 +144,6 @@ export default function App() {
       <AndroidGlassBottomTabs
         selectedIndex={tab}
         onTabSelected={setTab}
-        minimized={minimized}
-        onMinimizedChange={setMinimized}
         style={styles.tabs}
       >
         {TABS.map((item) => (

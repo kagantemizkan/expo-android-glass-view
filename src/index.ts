@@ -6,6 +6,11 @@ export { default as AndroidGlassToggle } from './AndroidGlassToggle';
 export { default as AndroidGlassSlider } from './AndroidGlassSlider';
 export { default as AndroidGlassBottomTabs } from './AndroidGlassBottomTabs';
 export { default as AndroidGlassTab } from './AndroidGlassTab';
-export { useMinimizeOnScroll, type MinimizeOnScroll } from './useMinimizeOnScroll';
+export {
+  MinimizeOnScrollProvider,
+  useMinimizeOnScroll,
+  useMinimizeOnScrollHandler,
+  type MinimizeOnScroll,
+} from './MinimizeOnScroll';
 export * from './AndroidGlassView.types';
 export * from './AndroidGlassComponents.types';

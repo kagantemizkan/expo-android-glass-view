@@ -3,6 +3,7 @@ import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { AndroidGlassBottomTabsProps } from './AndroidGlassComponents.types';
+import { MinimizedStateContext } from './MinimizeOnScroll';
 import { type NativeColor, toNativeColor } from './utils';
 
 type IndexEvent = { nativeEvent: { index: number; eventCount: number } };
@@ -42,6 +43,9 @@ export default function AndroidGlassBottomTabs({
   // up with earlier selections) from a current one.
   const [eventCount, setEventCount] = React.useState(0);
   const selected = selectedIndex ?? ownIndex;
+  // Inside a MinimizeOnScrollProvider, the bar follows the shared state unless `minimized` is given.
+  const shared = React.useContext(MinimizedStateContext);
+  const followsProvider = minimized === undefined;
   return (
     <NativeAndroidGlassBottomTabs
       accessibilityRole="tablist"
@@ -50,7 +54,7 @@ export default function AndroidGlassBottomTabs({
       selectedIndex={selected}
       tabsCount={tabs.length}
       mostRecentEventCount={eventCount}
-      minimized={minimized ?? false}
+      minimized={minimized ?? shared?.minimized ?? false}
       accentColor={toNativeColor(accentColor)}
       containerColor={toNativeColor(containerColor)}
       onTabSelected={(event) => {
@@ -59,7 +63,11 @@ export default function AndroidGlassBottomTabs({
         setOwnIndex(index);
         onTabSelected?.(index);
       }}
-      onMinimizedChange={(event) => onMinimizedChange?.(event.nativeEvent.minimized)}>
+      onMinimizedChange={(event) => {
+        const value = event.nativeEvent.minimized;
+        if (followsProvider) shared?.setMinimized(value);
+        onMinimizedChange?.(value);
+      }}>
       {tabs.map((tab, index) => (
         // The native bar handles taps and drags, and draws these views itself (inside the glass
         // and, tinted, under the droplet), so they must stay real views and not take touches.

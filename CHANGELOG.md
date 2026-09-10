@@ -8,6 +8,8 @@ First release.
   whose backdrop is the live React Native screen behind it.
 - `AndroidGlassButton`, `AndroidGlassToggle`, `AndroidGlassSlider`, `AndroidGlassBottomTabs` and
   `AndroidGlassTab`: Kyant's Backdrop Catalog components, driven from React Native.
-- `useMinimizeOnScroll` and the tab bar's `minimized` prop: the tab bar shrinks while a list
-  scrolls down and comes back on scroll up or touch, like iOS 26. Animated natively.
+- Minimize on scroll: the tab bar shrinks while a list scrolls down and comes back on scroll up or
+  touch, like iOS 26. Animated natively. `MinimizeOnScrollProvider` + `useMinimizeOnScrollHandler`
+  share it across a navigator's screens; `useMinimizeOnScroll` and the `minimized` prop cover a
+  single component.
 - iOS and web: plain fallbacks with the same API.

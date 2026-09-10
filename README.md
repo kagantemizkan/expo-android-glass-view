@@ -19,6 +19,8 @@ import {
   AndroidGlassSlider,
   AndroidGlassBottomTabs,
   AndroidGlassTab,
+  MinimizeOnScrollProvider,
+  useMinimizeOnScrollHandler,
   useMinimizeOnScroll,
 } from 'expo-android-glass-view';
 ```
@@ -184,27 +186,95 @@ droplet returns to `selectedIndex`.
 
 Like iOS 26 tab bars, the bar can shrink while the user scrolls down a list, and come back when
 they scroll up, get back to the top or touch it. It gets shorter and narrower; every tab keeps its
-first child (the icon) while the rest (the label) fades out. `useMinimizeOnScroll` does the
-bookkeeping:
+first child (the icon) while the rest (the label) fades out.
+
+Wrap the bar and the screens in `MinimizeOnScrollProvider`, and give each list the handler from
+`useMinimizeOnScrollHandler`:
+
+```tsx
+<MinimizeOnScrollProvider>
+  {/* your navigator, or screens + AndroidGlassBottomTabs */}
+</MinimizeOnScrollProvider>
+
+// In any screen:
+const onScroll = useMinimizeOnScrollHandler();
+<FlatList onScroll={onScroll} scrollEventThrottle={16} … />
+```
+
+Inside the provider, `AndroidGlassBottomTabs` follows the shared state by itself (unless you pass
+`minimized`). Each list tracks its own scroll position, and a screen isn't re-rendered when the
+bar minimizes. The scroll position is read in JS, where the list lives; only the resulting flag
+goes to the native side, where the animation runs. Any list that reports `onScroll` works
+(ScrollView, FlatList, SectionList, FlashList…); if you already have an `onScroll`, call the
+handler from it.
+
+When the list and the bar are in the same component, `useMinimizeOnScroll` alone is enough:
 
 ```tsx
 const { minimized, setMinimized, onScroll } = useMinimizeOnScroll();
 
 <ScrollView onScroll={onScroll} scrollEventThrottle={16}>…</ScrollView>
-
-<AndroidGlassBottomTabs
-  selectedIndex={tab}
-  onTabSelected={setTab}
-  minimized={minimized}
-  onMinimizedChange={setMinimized}>
-  …
-</AndroidGlassBottomTabs>
+<AndroidGlassBottomTabs minimized={minimized} onMinimizedChange={setMinimized} …>…</AndroidGlassBottomTabs>
 ```
 
-The scroll position is read in JS, where the list lives; only the resulting `minimized` flag goes
-to the native side, where the animation runs. Any list that reports `onScroll` works (FlatList,
-SectionList, FlashList…); if you already have an `onScroll`, call the hook's from it. The iOS and
-web fallbacks don't minimize.
+The iOS and web fallbacks don't minimize; there, `useMinimizeOnScrollHandler` returns `undefined`.
+
+### With Expo Router or React Navigation
+
+The bar doesn't navigate by itself: use it as the navigator's `tabBar`, driven by the navigation
+state. Tap vetoes (`tabPress` with `preventDefault`) send the droplet back.
+
+```tsx
+import { Tabs } from 'expo-router';
+import type { BottomTabBarProps } from 'expo-router/js-tabs';
+import { StyleSheet } from 'react-native';
+import {
+  AndroidGlassBottomTabs,
+  AndroidGlassTab,
+  MinimizeOnScrollProvider,
+} from 'expo-android-glass-view';
+
+function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  // Routes hidden with `href: null` reach a custom bar as `display: 'none'`.
+  const routes = state.routes.filter(
+    (route) => StyleSheet.flatten(descriptors[route.key].options.tabBarItemStyle)?.display !== 'none'
+  );
+  const focusedKey = state.routes[state.index].key;
+  return (
+    <AndroidGlassBottomTabs
+      selectedIndex={routes.findIndex((route) => route.key === focusedKey)}
+      onTabSelected={(index) => {
+        const route = routes[index];
+        const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+        if (!event.defaultPrevented) navigation.navigate(route.name, route.params);
+      }}
+      style={{ position: 'absolute', left: 24, right: 24, bottom: 32 }}>
+      {routes.map((route) => {
+        const { options } = descriptors[route.key];
+        return (
+          <AndroidGlassTab
+            key={route.key}
+            label={options.title ?? route.name}
+            // The droplet tints the selected tab, so draw icons in one neutral colour.
+            icon={options.tabBarIcon?.({ focused: false, color: '#000000', size: 24 })}
+          />
+        );
+      })}
+    </AndroidGlassBottomTabs>
+  );
+}
+
+export default function TabLayout() {
+  return (
+    <MinimizeOnScrollProvider>
+      <Tabs tabBar={(props) => <GlassTabBar {...props} />} />
+    </MinimizeOnScrollProvider>
+  );
+}
+```
+
+The bar floats over the screens, so give their content some bottom padding. With React
+Navigation, the same component works as `createBottomTabNavigator`'s `tabBar`.
 
 ## Colours and dark mode
 
