@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 — 2026-09-10
+
+- Fix a crash when a glass view sits inside a react-native-screens stack (Expo Router and React
+  Navigation native stacks): `IllegalStateException: Recording currently in progress`. While a
+  glass view captures its backdrop, its ancestors are still being drawn; the capture no longer
+  calls their `draw()` again but draws their background and children itself.
+- New native constant `captureRevision` (2), so JS can tell a fixed binary from an older one.
+
 ## 0.1.0 — 2026-09-10
 
 First release.

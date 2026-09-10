@@ -10,6 +10,11 @@ class ExpoAndroidGlassViewModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ExpoAndroidGlassView")
 
+    // Bumped when the backdrop capture changes in a way JS may need to know about.
+    // 2: ancestors of a sampling glass view are never drawn again through their own draw()
+    //    (0.1.1 crashed inside react-native-screens stacks).
+    Constant("captureRevision") { 2 }
+
     View(AndroidGlassView::class) {
       Name("AndroidGlassView")
 
