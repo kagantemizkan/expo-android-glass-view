@@ -51,7 +51,7 @@ export type AndroidGlassBottomTabsProps = ViewProps & {
   /** Called when the user taps a tab or drops the droplet on one. */
   onTabSelected?: (index: number) => void;
   /**
-   * Minimizes the bar, like iOS 26 tab bars on scroll: it gets shorter and narrower, each tab keeps
+   * Minimizes the bar (an addition of this package): it gets shorter and narrower, each tab keeps
    * only its first child (the icon) and the rest (the label) fades out. Animated natively. Inside a
    * `MinimizeOnScrollProvider`, leave it out: the bar follows the provider. Android only.
    */

@@ -198,8 +198,8 @@ droplet returns to `selectedIndex`.
 
 ### Minimize on scroll
 
-Like iOS 26 tab bars, the bar can shrink while the user scrolls down a list, and come back when
-they scroll up, get back to the top or touch it. It gets shorter and narrower; every tab keeps its
+Added by this package, on top of Kyant's tab bar: the bar can shrink while the user scrolls
+down a list, and come back when they scroll up, get back to the top or touch it. It gets shorter and narrower; every tab keeps its
 first child (the icon) while the rest (the label) fades out.
 
 Wrap the bar and the screens in `MinimizeOnScrollProvider`, and give each list the handler from
