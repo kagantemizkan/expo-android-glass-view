@@ -1,4 +1,8 @@
-# expo-android-glass-view
+<p align="center">
+  <img src=".github/assets/hero.png" alt="Liquid Glass — expo-android-glass-view" width="1040" />
+</p>
+
+#
 
 Liquid Glass for React Native on **Android**: real refraction, blur, vibrancy and rim
 highlights behind any React content, rendered with Jetpack Compose — plus ready-made glass
@@ -30,12 +34,12 @@ the same window, and keeps up with scrolling lists, animations and layout change
 
 ## Platforms
 
-| Platform | Result |
-| --- | --- |
-| Android 13+ (API 33) | Full effect: refraction, chromatic aberration, blur, vibrancy |
+| Platform               | Result                                                        |
+| ---------------------- | ------------------------------------------------------------- |
+| Android 13+ (API 33)   | Full effect: refraction, chromatic aberration, blur, vibrancy |
 | Android 12 (API 31–32) | Blur and vibrancy, no refraction (needs AGSL runtime shaders) |
-| Android 11 and older | Plain translucent surface (`fallbackColor`) |
-| iOS, web | Same components, plain fallbacks with the same API — no crash |
+| Android 11 and older   | Plain translucent surface (`fallbackColor`)                   |
+| iOS, web               | Same components, plain fallbacks with the same API — no crash |
 
 Requires a development build (it is a native module, so it does not run in Expo Go) and the
 React Native New Architecture. Built against Expo SDK 57 / React Native 0.86.
@@ -61,20 +65,20 @@ A container: children render on top of the glass and stay fully interactive.
 
 Accepts every `View` prop plus:
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `cornerRadius` | `number` | `style.borderRadius`, else `24` | Corner radius of the glass shape in dp. Use a large value (e.g. `999`) for a capsule. |
-| `blurRadius` | `number` | `2` | Backdrop blur in dp. `0` disables it. |
-| `refractionHeight` | `number` | `12` | Width of the refracting rim in dp. `0` disables refraction. |
-| `refractionAmount` | `number` | `24` | How far content is bent at the rim, in dp. |
-| `chromaticAberration` | `boolean` | `false` | Split the refraction per colour channel (prism fringe). |
-| `depthEffect` | `boolean` | `false` | Stronger, depth-like bending towards the rim. |
-| `vibrancy` | `boolean` | `true` | Boost the saturation of what is behind the glass. |
-| `highlight` | `boolean` | `true` | Specular highlight along the rim. |
-| `shadow` | `boolean` | `true` | Soft drop shadow around the shape. |
-| `tintColor` | `ColorValue` | — | Colour tint mixed into the glass. |
-| `surfaceColor` | `ColorValue` | — | Flat colour painted over the glass, on top of the refraction. |
-| `fallbackColor` | `ColorValue` | `rgba(255,255,255,0.7)` | Surface used where the effect cannot run (see *Platforms*). |
+| Prop                  | Type         | Default                         | Description                                                                           |
+| --------------------- | ------------ | ------------------------------- | ------------------------------------------------------------------------------------- |
+| `cornerRadius`        | `number`     | `style.borderRadius`, else `24` | Corner radius of the glass shape in dp. Use a large value (e.g. `999`) for a capsule. |
+| `blurRadius`          | `number`     | `2`                             | Backdrop blur in dp. `0` disables it.                                                 |
+| `refractionHeight`    | `number`     | `12`                            | Width of the refracting rim in dp. `0` disables refraction.                           |
+| `refractionAmount`    | `number`     | `24`                            | How far content is bent at the rim, in dp.                                            |
+| `chromaticAberration` | `boolean`    | `false`                         | Split the refraction per colour channel (prism fringe).                               |
+| `depthEffect`         | `boolean`    | `false`                         | Stronger, depth-like bending towards the rim.                                         |
+| `vibrancy`            | `boolean`    | `true`                          | Boost the saturation of what is behind the glass.                                     |
+| `highlight`           | `boolean`    | `true`                          | Specular highlight along the rim.                                                     |
+| `shadow`              | `boolean`    | `true`                          | Soft drop shadow around the shape.                                                    |
+| `tintColor`           | `ColorValue` | —                               | Colour tint mixed into the glass.                                                     |
+| `surfaceColor`        | `ColorValue` | —                               | Flat colour painted over the glass, on top of the refraction.                         |
+| `fallbackColor`       | `ColorValue` | `rgba(255,255,255,0.7)`         | Surface used where the effect cannot run (see _Platforms_).                           |
 
 Don't set `backgroundColor` on a glass view — it would paint over the effect. Use `tintColor`
 or `surfaceColor` instead.
@@ -83,6 +87,8 @@ or `surfaceColor` instead.
 
 Kyant's liquid button: while pressed, the glass swells, stretches towards the finger and a
 highlight follows it.
+
+<img src=".github/assets/buttons.gif" alt="AndroidGlassButton" width="480" />
 
 ```tsx
 <AndroidGlassButton title="Save" onPress={save} />
@@ -95,29 +101,31 @@ highlight follows it.
 
 Takes every `AndroidGlassView` prop (`cornerRadius` defaults to a capsule) plus:
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `onPress` | `() => void` | — | Called on tap. |
-| `title` | `string` | — | Convenience label (15 sp; white on a tinted button). |
-| `titleStyle` | `TextStyle` | — | Style for `title`. |
-| `interactive` | `boolean` | `true` | Press and drag deformation. |
+| Prop          | Type         | Default | Description                                          |
+| ------------- | ------------ | ------- | ---------------------------------------------------- |
+| `onPress`     | `() => void` | —       | Called on tap.                                       |
+| `title`       | `string`     | —       | Convenience label (15 sp; white on a tinted button). |
+| `titleStyle`  | `TextStyle`  | —       | Style for `title`.                                   |
+| `interactive` | `boolean`    | `true`  | Press and drag deformation.                          |
 
 The default size is 48 dp high with 16 dp horizontal padding; override it with `style`. The
-children are drawn *inside* the glass (clipped to it, deformed with it), so they are decorative:
+children are drawn _inside_ the glass (clipped to it, deformed with it), so they are decorative:
 don't put interactive elements in a button.
 
 ## `AndroidGlassToggle`
+
+<img src=".github/assets/toggles.gif" alt="AndroidGlassToggle" width="480" />
 
 ```tsx
 <AndroidGlassToggle value={enabled} onValueChange={setEnabled} />
 ```
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `value` | `boolean` | `false` | |
-| `onValueChange` | `(value: boolean) => void` | — | Called on tap or when the thumb is dropped on the other side. |
-| `accentColor` | `ColorValue` | iOS green | Track colour when on. |
-| `trackColor` | `ColorValue` | translucent grey | Track colour when off. |
+| Prop            | Type                       | Default          | Description                                                   |
+| --------------- | -------------------------- | ---------------- | ------------------------------------------------------------- |
+| `value`         | `boolean`                  | `false`          |                                                               |
+| `onValueChange` | `(value: boolean) => void` | —                | Called on tap or when the thumb is dropped on the other side. |
+| `accentColor`   | `ColorValue`               | iOS green        | Track colour when on.                                         |
+| `trackColor`    | `ColorValue`               | translucent grey | Track colour when off.                                        |
 
 The track is 64 × 28 dp; the thumb turns into refracting glass and grows past it while dragged.
 
@@ -127,18 +135,20 @@ new value, the switch returns to `value`.
 
 ## `AndroidGlassSlider`
 
+<img src=".github/assets/sliders.gif" alt="AndroidGlassSlider" width="480" />
+
 ```tsx
 <AndroidGlassSlider value={volume} maximumValue={100} onValueChange={setVolume} />
 ```
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `value` | `number` | `0` | |
-| `minimumValue` / `maximumValue` | `number` | `0` / `1` | |
-| `onValueChange` | `(value: number) => void` | — | Called continuously while dragging. |
-| `onSlidingComplete` | `(value: number) => void` | — | Called when the finger is lifted, or after a tap on the track. |
-| `accentColor` | `ColorValue` | system blue | Filled part of the track. |
-| `trackColor` | `ColorValue` | translucent grey | Unfilled part of the track. |
+| Prop                            | Type                      | Default          | Description                                                    |
+| ------------------------------- | ------------------------- | ---------------- | -------------------------------------------------------------- |
+| `value`                         | `number`                  | `0`              |                                                                |
+| `minimumValue` / `maximumValue` | `number`                  | `0` / `1`        |                                                                |
+| `onValueChange`                 | `(value: number) => void` | —                | Called continuously while dragging.                            |
+| `onSlidingComplete`             | `(value: number) => void` | —                | Called when the finger is lifted, or after a tap on the track. |
+| `accentColor`                   | `ColorValue`              | system blue      | Filled part of the track.                                      |
+| `trackColor`                    | `ColorValue`              | translucent grey | Unfilled part of the track.                                    |
 
 It stretches to the width of its parent and is 36 dp high by default.
 
@@ -153,6 +163,8 @@ Kyant's iOS 26 style tab bar: a glass capsule with a liquid selection droplet yo
 between tabs. Under the droplet the tab content takes the accent colour and is magnified while
 pressed.
 
+<img src=".github/assets/tabbar.gif" alt="AndroidGlassBottomTabs" width="480" />
+
 ```tsx
 <AndroidGlassBottomTabs
   selectedIndex={tab}
@@ -164,14 +176,14 @@ pressed.
 </AndroidGlassBottomTabs>
 ```
 
-| Prop | Type | Default | Description |
-| --- | --- | --- | --- |
-| `selectedIndex` | `number` | `0` | |
-| `onTabSelected` | `(index: number) => void` | — | Called on tap, or when the droplet is dropped on a tab. |
-| `minimized` | `boolean` | `false` | Minimized look: shorter and narrower, labels faded out. Animated. See *Minimize on scroll*. |
-| `onMinimizedChange` | `(minimized: boolean) => void` | — | Called with `false` when the user expands the minimized bar by touching it. |
-| `accentColor` | `ColorValue` | system blue | Colour of the selected tab's content. |
-| `containerColor` | `ColorValue` | translucent white | Colour of the glass bar. |
+| Prop                | Type                           | Default           | Description                                                                                 |
+| ------------------- | ------------------------------ | ----------------- | ------------------------------------------------------------------------------------------- |
+| `selectedIndex`     | `number`                       | `0`               |                                                                                             |
+| `onTabSelected`     | `(index: number) => void`      | —                 | Called on tap, or when the droplet is dropped on a tab.                                     |
+| `minimized`         | `boolean`                      | `false`           | Minimized look: shorter and narrower, labels faded out. Animated. See _Minimize on scroll_. |
+| `onMinimizedChange` | `(minimized: boolean) => void` | —                 | Called with `false` when the user expands the minimized bar by touching it.                 |
+| `accentColor`       | `ColorValue`                   | system blue       | Colour of the selected tab's content.                                                       |
+| `containerColor`    | `ColorValue`                   | translucent white | Colour of the glass bar.                                                                    |
 
 Each child is one tab (equal widths). `AndroidGlassTab` is an icon over a 12 sp label, but any
 view works — as with buttons, the tabs are drawn inside the glass, so keep them decorative. The
@@ -237,7 +249,8 @@ import {
 function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   // Routes hidden with `href: null` reach a custom bar as `display: 'none'`.
   const routes = state.routes.filter(
-    (route) => StyleSheet.flatten(descriptors[route.key].options.tabBarItemStyle)?.display !== 'none'
+    (route) =>
+      StyleSheet.flatten(descriptors[route.key].options.tabBarItemStyle)?.display !== 'none'
   );
   const focusedKey = state.routes[state.index].key;
   return (
@@ -245,7 +258,11 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       selectedIndex={routes.findIndex((route) => route.key === focusedKey)}
       onTabSelected={(index) => {
         const route = routes[index];
-        const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+        const event = navigation.emit({
+          type: 'tabPress',
+          target: route.key,
+          canPreventDefault: true,
+        });
         if (!event.defaultPrevented) navigation.navigate(route.name, route.params);
       }}
       style={{ position: 'absolute', left: 24, right: 24, bottom: 32 }}>
