@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.1.6 — 2026-09-12
+
+- Fix: 0.1.4 and 0.1.5 were published without their compiled JavaScript (`build/`), so Metro
+  failed with `Unable to resolve "expo-android-glass-view"`. The native code is the same as in
+  0.1.5: an app whose native build already has 0.1.5 only needs the new JavaScript, no rebuild.
+- `prepare` now fails when TypeScript emits nothing, so a package without its JavaScript can't be
+  published again.
+
+## 0.1.5 — 2026-09-12
 
 - Performance: a glass view's capture leaves out everything that cannot reach it. Before, an
   animation anywhere on screen made every glass view re-render its blur and refraction on every

@@ -30,7 +30,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": false,
     "rootDir": "./src",
-    "outDir": "./build"
+    "outDir": "./build",
+    "noEmit": false
   },
   "include": [
     "./src"
@@ -38,6 +39,5 @@
   "exclude": [
     "**/__mocks__/*",
     "**/__tests__/*"
-  ],
-  "extends": "expo/tsconfig.base"
+  ]
 }
