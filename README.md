@@ -317,20 +317,88 @@ are told a native gesture started. Vertical drags still scroll.
 
 ## How it works
 
-Each glass view is a React Native view whose first child is a Compose view drawing Kyant's
-`drawBackdrop` modifier. Its backdrop is not a Compose layer but the Android view tree of the
-window — i.e. your React Native screen:
+In short: every glass view takes a live snapshot of what is drawn behind it, runs it through a
+GPU lens (blur, refraction, vibrancy) and draws the result in its own shape.
 
-1. Every container on the path from the window root to a glass view is drawn with the public
-   `View.draw()`, with glass views (and branches containing them) hidden for that call.
-2. Every other subtree is recorded as a reference to its RenderNode, so when a list scrolls or a
-   view animates, the glass picks it up without re-sampling.
-3. Glass views don't sample other glass views, except their own ancestors: a toggle on a glass
-   card sees the card. This rules out RenderNode cycles (glass A → glass B → glass A).
-4. The capture is recorded once into a RenderNode with its own GPU layer, and only recorded again
-   when the glass moves, something scrolls or glass views come and go. Every glass layer of a view
-   (the tab bar has three) samples that same texture, so pressing or dragging only re-runs the
-   glass effects, not the capture.
+### A Compose layer inside a React Native view
+
+Each glass component is a React Native view (`GlassHostView`) whose first child is a Jetpack
+Compose view drawing Kyant's `drawBackdrop` modifier. Your React children are regular React
+Native views on top of that layer — except in `AndroidGlassButton`, where they are drawn _inside_
+the glass so they stretch and swell with it.
+
+### Seeing the React Native screen behind it
+
+Kyant's library can only see Compose content behind a glass. Here the backdrop is the Android
+view tree of the window — your React Native screen — captured with an approach adapted from
+[QWEA0/Liquid-Glass-Android](https://github.com/QWEA0/Liquid-Glass-Android):
+
+1. The glass records the area of the window around itself (plus a 32 dp margin for blur and for
+   glass that grows while pressed) into a `RenderNode`.
+2. Its own ancestors are being drawn at that very moment, and calling their `draw()` again would
+   crash, so their background and children are drawn one by one instead, in their real drawing
+   order (`zIndex` included).
+3. Every other subtree is recorded as a _reference_ to its RenderNode rather than as pixels, so
+   when content behind the glass animates, the glass shows it without capturing again.
+4. Other glass views are left out of the capture, except the glass's own ancestors: a toggle on
+   a glass card sees the card. This rules out cycles (glass A → glass B → glass A).
+
+### The effects
+
+The capture goes through Kyant's effect chain on the GPU: blur (`RenderEffect`, Android 12+),
+refraction at the rim (an AGSL runtime shader, Android 13+) with optional chromatic aberration,
+vibrancy, a rim highlight and a drop shadow. Where these APIs are missing, the glass falls back
+to a flat `fallbackColor` surface.
+
+### When it captures again
+
+The capture is cached in one RenderNode with its own GPU layer, and every glass layer of a view
+(the tab bar has three) samples that same texture. It is recorded again only when:
+
+- the glass moves on screen (layout, transform, dragging),
+- a parent scrolls,
+- a glass view is added or removed.
+
+A glass view that is off screen waits until it is visible again. Pressing or dragging a glass
+control only re-runs the GPU effects, not the capture.
+
+### Controlled props
+
+Toggles, sliders and the tab bar are dragged natively. So that a late `value` from JS never
+pulls the thumb back, a prop only wins once JS has handled every event the control sent — the
+handshake React Native's `TextInput` uses.
+
+### Minimize on scroll
+
+JS decides the direction (`useMinimizeOnScrollHandler`) and sends the bar a single boolean; the
+shrinking itself is animated natively in Compose. The provider shares that state between every
+screen.
+
+## Performance
+
+The glass costs nothing while nothing moves. The cost comes when many glass views have to be
+redrawn in the same frame: every one of them runs its blur and refraction on the GPU.
+
+Measured with `adb shell dumpsys gfxinfo` in the example app on a mid-range phone: Xiaomi
+24117RN76E, MediaTek Helio G99, Android 16, 120 Hz. The app was a debuggable development build.
+That mostly slows the UI thread; the glass effects run on Android's RenderThread and GPU,
+which a release build does not speed up much.
+
+| Screen                                                                     | Glass views visible | Result                                                                            |
+| -------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------- |
+| Static screen, nothing moving                                              | 2                   | 0 frames rendered while idle                                                      |
+| Scrolling a list under a glass header, a glass button and the tab bar      | 3                   | 94% of frames on time                                                             |
+| 6 glass tiles over an animated backdrop, plus glass panels and controls    | 15+                 | about 20–24 fps; the RenderThread spends about 40 ms per frame issuing GPU work   |
+
+In practice:
+
+- A glass header, a tab bar and a few glass controls on a scrolling screen stay smooth.
+- Many glass views redrawing at once — over an animation, or all scrolling together — will
+  drop frames on mid-range GPUs. Keep those to a handful.
+- Don't put a glass view inside every item of a long list: each visible item captures and
+  redraws on every scroll frame.
+- Glass views scrolled out of view don't capture again until they are visible.
+- On Android 11 and older the glass is a flat surface and costs nothing extra.
 
 ## Limitations
 
