@@ -63,6 +63,8 @@ A container: children render on top of the glass and stay fully interactive.
 </AndroidGlassView>
 ```
 
+<img src=".github/assets/glasses.gif" alt="AndroidGlassView with different props: default, frosted, lens, prism, tint, no shadow" width="480" />
+
 Accepts every `View` prop plus:
 
 | Prop                  | Type         | Default                         | Description                                                                           |
