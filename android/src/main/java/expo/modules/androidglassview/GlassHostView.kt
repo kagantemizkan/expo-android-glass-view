@@ -120,6 +120,12 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
     clipToPadding = false
     composeView.clipChildren = false
     super.addView(composeView, 0, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    // The Compose layer is not sized while it is detached (see onMeasure); size it on attach.
+    // Listeners run after the view's own onAttachedToWindow, so it is attached by then.
+    composeView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+      override fun onViewAttachedToWindow(v: View) = layoutComposeLayer()
+      override fun onViewDetachedFromWindow(v: View) = Unit
+    })
   }
 
   @Composable
@@ -199,6 +205,12 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
     val width = MeasureSpec.getSize(widthMeasureSpec)
     val height = MeasureSpec.getSize(heightMeasureSpec)
     setMeasuredDimension(width, height)
+    // ComposeView creates its composition on its first measure, and that needs the window's
+    // recomposer: measured off-window it throws "Cannot locate windowRecomposer". Fabric does
+    // measure off-window views — a screen react-native-screens has not attached yet (a pushed
+    // screen, a tab opened for the first time) or has detached — so skip the Compose layer until
+    // it is attached. The attach listener in init sizes it then.
+    if (!composeView.isAttachedToWindow) return
     composeView.measure(
       MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
       MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
@@ -207,7 +219,17 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
 
   override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
     // React Native lays out the React children; only the glass layer is ours.
+    if (!composeView.isAttachedToWindow) return
     composeView.layout(0, 0, right - left, bottom - top)
+  }
+
+  /** Sizes the Compose layer to this view outside a layout pass (see [onMeasure]). */
+  private fun layoutComposeLayer() {
+    composeView.measure(
+      MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+      MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
+    )
+    composeView.layout(0, 0, width, height)
   }
 
   override fun requestLayout() {
