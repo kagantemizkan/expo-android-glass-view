@@ -4,7 +4,9 @@
  *
  * Vendored into expo-android-glass-view. Changes from upstream: package relocated
  * from com.kyant.backdrop, Kotlin Multiplatform expect/actual merged into Android-only
- * code, dependency on io.github.kyant0:shapes removed, Kotlin 2.1 compatible syntax.
+ * code, dependency on io.github.kyant0:shapes removed, Kotlin 2.1 compatible syntax,
+ * the highlight layer is only re-recorded when its shape, size, width, blur or style change,
+ * and nothing is drawn at zero alpha.
  */
 package expo.modules.androidglassview.backdrop.highlight
 
@@ -25,6 +27,7 @@ import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.node.requireGraphicsContext
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.util.fastCoerceAtMost
 import expo.modules.androidglassview.backdrop.RuntimeShaderCacheImpl
@@ -92,9 +95,17 @@ internal class HighlightNode(
 
     private var prevStyle: HighlightStyle? = null
 
+    // What the layer was last recorded with. Alpha and blend mode are layer properties, so
+    // animating them (e.g. a highlight fading in on press) doesn't re-record the rim, and neither
+    // does a redraw of the node for any other reason.
+    private var recordedOutline: Outline? = null
+    private var recordedWidth = Dp.Unspecified
+    private var recordedBlurRadius = Dp.Unspecified
+    private var recordedStyle: HighlightStyle? = null
+
     override fun ContentDrawScope.draw() {
         val highlight = highlight()
-        if (highlight == null || highlight.width.value <= 0f) {
+        if (highlight == null || highlight.width.value <= 0f || highlight.alpha <= 0f) {
             return drawContent()
         }
 
@@ -106,33 +117,43 @@ internal class HighlightNode(
             val density: Density = this
             val layoutDirection = layoutDirection
 
-            val safeSize =
-                IntSize(
-                    ceil(size.width).toInt() + 2,
-                    ceil(size.height).toInt() + 2
-                )
-
+            // ShapeProvider hands out the same outline while shape, size and density stay.
             val outline = shapeProvider.shape.createOutline(size, layoutDirection, density)
-            val clipPath =
-                if (outline is Outline.Rounded) {
-                    clipPath ?: Path().also { clipPath = it }
-                } else {
-                    null
-                }
 
-            configurePaint(highlight)
+            if (outline !== recordedOutline || highlight.width != recordedWidth ||
+                highlight.blurRadius != recordedBlurRadius || highlight.style != recordedStyle
+            ) {
+                val safeSize =
+                    IntSize(
+                        ceil(size.width).toInt() + 2,
+                        ceil(size.height).toInt() + 2
+                    )
+                val clipPath =
+                    if (outline is Outline.Rounded) {
+                        clipPath ?: Path().also { clipPath = it }
+                    } else {
+                        null
+                    }
+
+                configurePaint(highlight)
+
+                highlightLayer.record(safeSize) {
+                    translate(1f, 1f) {
+                        val canvas = drawContext.canvas
+                        canvas.save()
+                        canvas.clipOutline(outline, clipPath)
+                        canvas.drawOutline(outline, paint)
+                        canvas.restore()
+                    }
+                }
+                recordedOutline = outline
+                recordedWidth = highlight.width
+                recordedBlurRadius = highlight.blurRadius
+                recordedStyle = highlight.style
+            }
 
             highlightLayer.alpha = highlight.alpha
             highlightLayer.blendMode = highlight.style.blendMode
-            highlightLayer.record(safeSize) {
-                translate(1f, 1f) {
-                    val canvas = drawContext.canvas
-                    canvas.save()
-                    canvas.clipOutline(outline, clipPath)
-                    canvas.drawOutline(outline, paint)
-                    canvas.restore()
-                }
-            }
 
             translate(-1f, -1f) {
                 drawLayer(highlightLayer)
@@ -154,6 +175,7 @@ internal class HighlightNode(
         clipPath = null
         runtimeShaderCache.clear()
         prevStyle = null
+        recordedOutline = null
     }
 
     private fun DrawScope.configurePaint(highlight: Highlight) {

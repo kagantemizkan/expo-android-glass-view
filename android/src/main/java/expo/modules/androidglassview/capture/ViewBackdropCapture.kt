@@ -6,16 +6,19 @@
  * Changes from upstream: renamed, comments translated, generalised from "skip the one glass
  * that is sampling" to "skip every other glass view", glass ancestors of the sampling view are
  * drawn instead of skipped, expanded branches are positioned with the framework's own child
- * transform (left/top, scroll, matrix, alpha) instead of screen deltas, and the ancestors of the
- * sampling view are drawn child by child instead of through their own draw().
+ * transform (left/top, scroll, matrix, alpha) instead of screen deltas, the ancestors of the
+ * sampling view are drawn child by child instead of through their own draw(), and children that
+ * cannot reach the recorded area are left out (culled).
  */
 package expo.modules.androidglassview.capture
 
 import android.graphics.Canvas
+import android.graphics.RectF
 import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.RequiresApi
+import kotlin.math.max
 
 /**
  * Draws a source view's content into a canvas while leaving glass views out of it.
@@ -54,10 +57,22 @@ import androidx.annotation.RequiresApi
  * Glass views that are *ancestors* of the sampling one are not skipped: glass on top of a glass
  * card sees the card. That cannot form a cycle, because an ancestor never samples its own subtree.
  *
+ * **Culling.** The capture only covers the area around the glass, but a reference to a subtree
+ * anywhere on screen makes the RenderThread re-render this glass — capture, blur and refraction —
+ * whenever that subtree changes, even when none of it can be seen through the glass. With a few
+ * glass views on a screen with an animation, that is every glass view on every frame. So a child
+ * is left out when nothing it draws can reach the recorded area ([reachesRecordedArea]): neither
+ * its bounds (plus a margin for shadows) nor, as long as it doesn't clip them, those of its
+ * descendants. A left-out child is not referenced, so it is not live: [changedSinceCapture]
+ * reports when one of them moved, resized or scrolled, and the glass then captures again.
+ *
  * Known trade-offs: the children of ancestors are drawn without their view Animation and
  * elevation shadow; inside an expanded container that is not an ancestor, glass-containing
  * branches are drawn after their siblings, so a sibling that normally paints above such a branch
- * ends up below it in the backdrop.
+ * ends up below it in the backdrop; content drawn well outside its view's bounds (farther than
+ * the cull margin, e.g. a large box shadow) is missing from glass views that its view is away
+ * from, and so is content a left-out subtree animates into the glass area without its own root
+ * moving.
  */
 @RequiresApi(Build.VERSION_CODES.Q) // View.setTransitionVisibility, ViewGroup.getChildDrawingOrder(int)
 internal class ViewBackdropCapture {
@@ -77,7 +92,101 @@ internal class ViewBackdropCapture {
   private val hidden = ArrayList<View>()
 
   /**
-   * @param canvas a hardware canvas whose origin is aligned with [source]'s top-left corner.
+   * Views whose scroll offset the last capture applied itself, with the offsets it used (x, y
+   * pairs in [bakedScroll]). Every other scrolling view is referenced through its RenderNode, so
+   * the capture follows it without being recorded again.
+   */
+  private val bakedViews = ArrayList<View>()
+  private var bakedScroll = IntArray(32)
+
+  /**
+   * Children the last capture left out, with their geometry at the time ([GEOMETRY_FIELDS]
+   * values each in [culledGeometry]); [culledSet] holds the same views for lookups.
+   */
+  private val culledViews = ArrayList<View>()
+  private val culledSet = HashSet<View>()
+  private var culledGeometry = FloatArray(GEOMETRY_FIELDS * 16)
+
+  /** Margin around a view's bounds that its drawing may still reach (shadows, borders), in px. */
+  private var cullPadding = 0f
+  private val cullRect = RectF()
+
+  /**
+   * Whether the last capture is out of date although the glass itself didn't move: a view whose
+   * scroll offset it baked in has scrolled, or a view it left out has moved, resized or scrolled
+   * (and may now reach the glass).
+   */
+  fun changedSinceCapture(): Boolean {
+    for (i in bakedViews.indices) {
+      val view = bakedViews[i]
+      if (view.scrollX != bakedScroll[i * 2] || view.scrollY != bakedScroll[i * 2 + 1]) return true
+    }
+    for (i in culledViews.indices) {
+      if (!hasGeometry(culledViews[i], i * GEOMETRY_FIELDS)) return true
+    }
+    return false
+  }
+
+  /** Forgets the views of the last capture (they may belong to a window that is going away). */
+  fun clear() {
+    bakedViews.clear()
+    culledViews.clear()
+    culledSet.clear()
+  }
+
+  private fun bakeScroll(view: View) {
+    val index = bakedViews.size
+    if (bakedScroll.size < (index + 1) * 2) bakedScroll = bakedScroll.copyOf(bakedScroll.size * 2)
+    bakedViews.add(view)
+    bakedScroll[index * 2] = view.scrollX
+    bakedScroll[index * 2 + 1] = view.scrollY
+  }
+
+  private fun cull(view: View) {
+    val offset = culledViews.size * GEOMETRY_FIELDS
+    if (culledGeometry.size < offset + GEOMETRY_FIELDS) {
+      culledGeometry = culledGeometry.copyOf(culledGeometry.size * 2)
+    }
+    culledViews.add(view)
+    culledSet.add(view)
+    val g = culledGeometry
+    g[offset] = view.left.toFloat()
+    g[offset + 1] = view.top.toFloat()
+    g[offset + 2] = view.right.toFloat()
+    g[offset + 3] = view.bottom.toFloat()
+    g[offset + 4] = view.translationX
+    g[offset + 5] = view.translationY
+    g[offset + 6] = view.scaleX
+    g[offset + 7] = view.scaleY
+    g[offset + 8] = view.rotation
+    g[offset + 9] = view.rotationX
+    g[offset + 10] = view.rotationY
+    g[offset + 11] = view.scrollX.toFloat()
+    g[offset + 12] = view.scrollY.toFloat()
+    g[offset + 13] = view.z
+  }
+
+  private fun hasGeometry(view: View, offset: Int): Boolean {
+    val g = culledGeometry
+    return g[offset] == view.left.toFloat() &&
+      g[offset + 1] == view.top.toFloat() &&
+      g[offset + 2] == view.right.toFloat() &&
+      g[offset + 3] == view.bottom.toFloat() &&
+      g[offset + 4] == view.translationX &&
+      g[offset + 5] == view.translationY &&
+      g[offset + 6] == view.scaleX &&
+      g[offset + 7] == view.scaleY &&
+      g[offset + 8] == view.rotation &&
+      g[offset + 9] == view.rotationX &&
+      g[offset + 10] == view.rotationY &&
+      g[offset + 11] == view.scrollX.toFloat() &&
+      g[offset + 12] == view.scrollY.toFloat() &&
+      g[offset + 13] == view.z
+  }
+
+  /**
+   * @param canvas a hardware canvas whose origin is aligned with [source]'s top-left corner, and
+   *   whose clip is the area to record (children that cannot reach it are left out).
    * @param self the glass view that is sampling.
    * @param glassViews every glass view; the ones outside [source] are ignored.
    */
@@ -85,6 +194,10 @@ internal class ViewBackdropCapture {
     expanded.clear()
     excluded.clear()
     selfPath.clear()
+    bakedViews.clear()
+    culledViews.clear()
+    culledSet.clear()
+    cullPadding = CULL_PADDING_DP * source.resources.displayMetrics.density
 
     var ancestor = self.parent
     while (ancestor is View) {
@@ -136,10 +249,14 @@ internal class ViewBackdropCapture {
     if (group != null) {
       for (i in 0 until group.childCount) {
         val child = group.getChildAt(i)
-        if (child.visibility == View.VISIBLE && (child in excluded || child in expanded)) {
+        if (child.visibility != View.VISIBLE) continue
+        val outside = child !in excluded && child.animation == null &&
+          !reachesRecordedArea(canvas, child, (child.left - host.scrollX).toFloat(), (child.top - host.scrollY).toFloat())
+        if (child in excluded || child in expanded || outside) {
           // Only flips the visibility flag; does not invalidate anything.
           child.setTransitionVisibility(View.INVISIBLE)
           hidden.add(child)
+          if (outside) cull(child)
         }
       }
     }
@@ -149,6 +266,7 @@ internal class ViewBackdropCapture {
     try {
       // The public View.draw() does not apply the view's own scroll offset (the framework does
       // that in updateDisplayListIfDirty), so apply it here.
+      bakeScroll(host)
       canvas.translate(-host.scrollX.toFloat(), -host.scrollY.toFloat())
       host.draw(canvas)
     } finally {
@@ -162,7 +280,7 @@ internal class ViewBackdropCapture {
       val clipChildren = group.clipChildren
       for (i in firstHidden until lastHidden) {
         val child = hidden[i]
-        if (child in excluded) continue
+        if (child in excluded || child in culledSet) continue
         val childSave = canvas.save()
         // Same transform the parent applies when it draws the child normally.
         canvas.translate((child.left - host.scrollX).toFloat(), (child.top - host.scrollY).toFloat())
@@ -186,23 +304,60 @@ internal class ViewBackdropCapture {
     try {
       // View.draw() paints the background at the view's origin, whatever its scroll offset.
       host.background?.draw(canvas)
+      bakeScroll(host)
       canvas.translate(-host.scrollX.toFloat(), -host.scrollY.toFloat())
       val clipChildren = host.clipChildren
       for (child in childrenInDrawingOrder(host)) {
         if (child in excluded) continue
         // Same visibility rule as ViewGroup.dispatchDraw.
         if (child.visibility != View.VISIBLE && child.animation == null) continue
+        if (child.animation == null && !reachesRecordedArea(canvas, child, child.left.toFloat(), child.top.toFloat())) {
+          cull(child)
+          continue
+        }
         val childSave = canvas.save()
         canvas.translate(child.left.toFloat(), child.top.toFloat())
         applyChildTransform(canvas, child, clipChildren)
         if (child in expanded) {
           drawLevel(canvas, child)
         } else {
+          bakeScroll(child)
           canvas.translate(-child.scrollX.toFloat(), -child.scrollY.toFloat())
           child.draw(canvas)
         }
         canvas.restoreToCount(childSave)
       }
+    } finally {
+      canvas.restoreToCount(save)
+    }
+  }
+
+  /**
+   * Whether anything [view] draws can land in the area being recorded (the canvas clip). [x], [y]
+   * is the view's position in the current canvas coordinates. A view that doesn't clip its
+   * children lets them draw outside its bounds, so they are checked too, recursively.
+   */
+  private fun reachesRecordedArea(canvas: Canvas, view: View, x: Float, y: Float): Boolean {
+    val save = canvas.save()
+    try {
+      canvas.translate(x, y)
+      val matrix = view.matrix
+      if (!matrix.isIdentity) canvas.concat(matrix)
+      val padding = cullPadding + max(view.z, 0f) * 2f
+      cullRect.set(-padding, -padding, view.width + padding, view.height + padding)
+      @Suppress("DEPRECATION") // quickReject(RectF) needs API 30
+      if (!canvas.quickReject(cullRect, Canvas.EdgeType.BW)) return true
+      if (view is ViewGroup && !view.clipChildren) {
+        for (i in 0 until view.childCount) {
+          val child = view.getChildAt(i)
+          if (child.visibility != View.VISIBLE && child.animation == null) continue
+          if (child.animation != null) return true
+          val childX = (child.left - view.scrollX).toFloat()
+          val childY = (child.top - view.scrollY).toFloat()
+          if (reachesRecordedArea(canvas, child, childX, childY)) return true
+        }
+      }
+      return false
     } finally {
       canvas.restoreToCount(save)
     }
@@ -236,6 +391,12 @@ internal class ViewBackdropCapture {
 
   companion object {
     private var depth = 0
+
+    /** Geometry values stored per culled view (bounds, transform, scroll, z). */
+    private const val GEOMETRY_FIELDS = 14
+
+    /** How far outside its bounds a view's drawing is assumed to reach (shadows, borders). */
+    private const val CULL_PADDING_DP = 8f
 
     /** True while any glass view is sampling (main thread only). */
     val isCapturing: Boolean

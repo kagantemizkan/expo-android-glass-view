@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Performance: a glass view's capture leaves out everything that cannot reach it. Before, an
+  animation anywhere on screen made every glass view re-render its blur and refraction on every
+  frame; now only the glass views it can be seen through do. On a screen with 17 glass views over
+  an animated backdrop (Helio G99, release build) this took the frame rate from about 20 to about
+  70 fps. A left-out view that moves, resizes or scrolls triggers a new capture.
+
+- Performance: scrolling no longer re-captures every glass view in the window. A glass view
+  captures again only when a container whose scroll offset its capture baked in has scrolled;
+  lists it merely references (e.g. a screen's list under a tab bar) scroll live for free.
+- Performance: the drop shadow, inner shadow and rim highlight are only re-recorded when their
+  shape or parameters change (not when they fade, and not on every redraw), and are skipped at
+  zero alpha.
+
 ## 0.1.3 — 2026-09-11
 
 - Fix a crash when navigating to or from a screen that has a glass view (Expo Router and React

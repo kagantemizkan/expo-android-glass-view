@@ -4,13 +4,16 @@
  *
  * Vendored into expo-android-glass-view. Changes from upstream: package relocated
  * from com.kyant.backdrop, Kotlin Multiplatform expect/actual merged into Android-only
- * code, dependency on io.github.kyant0:shapes removed, Kotlin 2.1 compatible syntax.
+ * code, dependency on io.github.kyant0:shapes removed, Kotlin 2.1 compatible syntax,
+ * the shadow layer is only re-recorded when its shape, size, offset or colour change, and
+ * nothing is drawn at zero alpha.
  */
 package expo.modules.androidglassview.backdrop.shadow
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
@@ -83,12 +86,20 @@ internal class InnerShadowNode(
 
     private var prevRadius = Float.NaN
 
+    // What the layer was last recorded with. Radius (a render effect), alpha and blend mode are
+    // layer properties, so animating them doesn't re-record the shape.
+    private var recordedOutline: Outline? = null
+    private var recordedOffsetX = Float.NaN
+    private var recordedOffsetY = Float.NaN
+    private var recordedColor = Color.Unspecified
+
     override fun ContentDrawScope.draw() {
         drawContent()
 
         if (!isRenderEffectSupported()) return
 
         val shadow = shadow() ?: return
+        if (shadow.alpha <= 0f) return
 
         val shadowLayer = shadowLayer
         if (shadowLayer != null) {
@@ -108,8 +119,6 @@ internal class InnerShadowNode(
                     null
                 }
 
-            configurePaint(shadow)
-
             shadowLayer.alpha = shadow.alpha
             shadowLayer.blendMode = shadow.blendMode
             if (prevRadius != radius) {
@@ -121,15 +130,25 @@ internal class InnerShadowNode(
                     }
                 prevRadius = radius
             }
-            shadowLayer.record {
-                val canvas = drawContext.canvas
-                canvas.save()
-                canvas.clipOutline(outline, clipPath)
-                canvas.drawOutline(outline, paint)
-                canvas.translate(offsetX, offsetY)
-                canvas.drawOutline(outline, ShadowMaskPaint)
-                canvas.translate(-offsetX, -offsetY)
-                canvas.restore()
+            // ShapeProvider hands out the same outline while shape, size and density stay.
+            if (outline !== recordedOutline || offsetX != recordedOffsetX ||
+                offsetY != recordedOffsetY || shadow.color != recordedColor
+            ) {
+                configurePaint(shadow)
+                shadowLayer.record {
+                    val canvas = drawContext.canvas
+                    canvas.save()
+                    canvas.clipOutline(outline, clipPath)
+                    canvas.drawOutline(outline, paint)
+                    canvas.translate(offsetX, offsetY)
+                    canvas.drawOutline(outline, ShadowMaskPaint)
+                    canvas.translate(-offsetX, -offsetY)
+                    canvas.restore()
+                }
+                recordedOutline = outline
+                recordedOffsetX = offsetX
+                recordedOffsetY = offsetY
+                recordedColor = shadow.color
             }
 
             val canvas = drawContext.canvas
@@ -154,6 +173,8 @@ internal class InnerShadowNode(
             graphicsContext.releaseGraphicsLayer(layer)
             shadowLayer = null
         }
+        prevRadius = Float.NaN
+        recordedOutline = null
     }
 
     private fun DrawScope.configurePaint(shadow: InnerShadow) {

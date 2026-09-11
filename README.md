@@ -342,6 +342,9 @@ view tree of the window — your React Native screen — captured with an approa
    when content behind the glass animates, the glass shows it without capturing again.
 4. Other glass views are left out of the capture, except the glass's own ancestors: a toggle on
    a glass card sees the card. This rules out cycles (glass A → glass B → glass A).
+5. So is everything that cannot reach the glass (its bounds plus a small margin, and those of its
+   descendants): a live reference to it would make the glass re-render — capture, blur and
+   refraction — whenever it changes, even though none of it shows through the glass.
 
 ### The effects
 
@@ -356,7 +359,10 @@ The capture is cached in one RenderNode with its own GPU layer, and every glass 
 (the tab bar has three) samples that same texture. It is recorded again only when:
 
 - the glass moves on screen (layout, transform, dragging),
-- a parent scrolls,
+- a container it draws inline scrolls: one of its own ancestors, one of their direct children,
+  or a container that holds other glass views. A list that is simply behind the glass (deeper in
+  another branch, with no glass inside) is referenced, so it scrolls live without a new capture,
+- a view it left out because it was too far away moves, resizes or scrolls,
 - a glass view is added or removed.
 
 A glass view that is off screen waits until it is visible again. Pressing or dragging a glass
@@ -376,25 +382,26 @@ screen.
 
 ## Performance
 
-The glass costs nothing while nothing moves. The cost comes when many glass views have to be
-redrawn in the same frame: every one of them runs its blur and refraction on the GPU.
+The glass costs nothing while nothing moves. It costs when what is behind a glass view changes:
+that glass view then runs its blur and refraction again on the GPU. Changes elsewhere on the
+screen don't count, because each glass view only captures what can reach it (see _Seeing the
+React Native screen behind it_).
 
-Measured with `adb shell dumpsys gfxinfo` in the example app on a mid-range phone: Xiaomi
-24117RN76E, MediaTek Helio G99, Android 16, 120 Hz. The app was a debuggable development build.
-That mostly slows the UI thread; the glass effects run on Android's RenderThread and GPU,
-which a release build does not speed up much.
+Measured with `adb shell dumpsys gfxinfo` and `atrace` on a release build, on a mid-range phone:
+Xiaomi 24117RN76E, MediaTek Helio G99, Android 16, 120 Hz.
 
-| Screen                                                                     | Glass views visible | Result                                                                            |
-| -------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------- |
-| Static screen, nothing moving                                              | 2                   | 0 frames rendered while idle                                                      |
-| Scrolling a list under a glass header, a glass button and the tab bar      | 3                   | 94% of frames on time                                                             |
-| 6 glass tiles over an animated backdrop, plus glass panels and controls    | 15+                 | about 20–24 fps; the RenderThread spends about 40 ms per frame issuing GPU work   |
+| Screen                                                                     | Glass views | Result                                                                  |
+| -------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------- |
+| Static screen, nothing moving                                              | 3           | 0 frames rendered while idle                                            |
+| Scrolling a list under a glass header, a glass button and the tab bar      | 3           | no missed frames; 90% of frames within 14 ms                            |
+| 6 glass tiles over an animated backdrop, plus glass panels and controls    | 17          | about 70 fps, no missed frames; the RenderThread needs ~14 ms per frame |
 
 In practice:
 
 - A glass header, a tab bar and a few glass controls on a scrolling screen stay smooth.
-- Many glass views redrawing at once — over an animation, or all scrolling together — will
-  drop frames on mid-range GPUs. Keep those to a handful.
+- What adds up is the number of glass views whose backdrop changes in the same frame — glass
+  over an animation, or glass that scrolls. On mid-range GPUs, keep those to a handful; glass
+  elsewhere on the screen doesn't add to it.
 - Don't put a glass view inside every item of a long list: each visible item captures and
   redraws on every scroll frame.
 - Glass views scrolled out of view don't capture again until they are visible.
@@ -405,6 +412,9 @@ In practice:
 - **Glass does not show other glass views** behind it, unless it sits inside them.
 - Inside a container that holds a glass view, branches containing glass are drawn after their
   siblings in the backdrop, so z-order can differ from the screen in that case.
+- Content drawn well outside its view's bounds (more than about 8 dp, e.g. a large box shadow)
+  may be missing behind glass that the view itself is away from, and so may content that a
+  distant view animates towards the glass without moving itself.
 - `SurfaceView`-based content (most video players, camera previews, some maps) is not part of the
   view tree's drawing and shows up empty behind the glass. `TextureView` content works.
 - A React Native `Modal` is a separate window, so glass inside it only sees the modal's content.

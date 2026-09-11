@@ -82,25 +82,25 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   private var downY = 0f
   private var dragClaimed = false
 
-  // Re-sample when the glass moves on screen (layout, an ancestor scrolling, transforms).
+  // Re-sample when the glass moves on screen (layout, an ancestor scrolling, transforms), when a
+  // container the capture drew inline (not by reference) scrolled — its offset is baked into the
+  // capture — or when a view the capture left out (too far away to be seen through the glass)
+  // moved and may now be. A list that is only referenced scrolls live, so scrolling it costs no
+  // capture. There is deliberately no global-layout listener: React Native lays out on every
+  // state change (e.g. each slider tick updating a label), and re-sampling every glass view each
+  // time made interactions stutter. Everything else behind the glass is referenced live (see
+  // ViewBackdropCapture).
   private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
     getLocationOnScreen(location)
     if (location[0] != lastLocation[0] || location[1] != lastLocation[1]) {
       lastLocation[0] = location[0]
       lastLocation[1] = location[1]
       resampleIfVisible()
-    } else if (resamplePending) {
+    } else if (resamplePending || backdrop.changedSinceCapture()) {
       resampleIfVisible()
     }
     true
   }
-
-  // Scrolling changes the containers that are drawn inline into the backdrop (the ones between
-  // the window root and a glass view), so re-sample. There is deliberately no global-layout
-  // listener: React Native lays out on every state change (e.g. each slider tick updating a
-  // label), and re-sampling every glass view each time made interactions stutter. Everything
-  // else behind the glass is referenced live (see ViewBackdropCapture).
-  private val scrollListener = ViewTreeObserver.OnScrollChangedListener { resampleIfVisible() }
 
   /**
    * Re-samples now if any part of this view is on screen. Sampling costs a capture plus the
@@ -288,18 +288,12 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   override fun onAttachedToWindow() {
     ensureViewTreeOwners()
     super.onAttachedToWindow()
-    observer = viewTreeObserver.also {
-      it.addOnPreDrawListener(preDrawListener)
-      it.addOnScrollChangedListener(scrollListener)
-    }
+    observer = viewTreeObserver.also { it.addOnPreDrawListener(preDrawListener) }
     GlassRegistry.add(this)
   }
 
   override fun onDetachedFromWindow() {
-    observer?.takeIf { it.isAlive }?.let {
-      it.removeOnPreDrawListener(preDrawListener)
-      it.removeOnScrollChangedListener(scrollListener)
-    }
+    observer?.takeIf { it.isAlive }?.removeOnPreDrawListener(preDrawListener)
     observer = null
     lastLocation[0] = Int.MIN_VALUE
     lastLocation[1] = Int.MIN_VALUE

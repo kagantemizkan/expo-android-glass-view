@@ -66,9 +66,16 @@ internal class ViewBackdrop(private val host: GlassHostView) : Backdrop {
     Snapshot.sendApplyNotifications()
   }
 
+  /**
+   * Whether the capture is out of date although the host didn't move: something it drew inline
+   * (not by reference) scrolled, or a view it left out moved (see ViewBackdropCapture).
+   */
+  fun changedSinceCapture(): Boolean = capture?.changedSinceCapture() ?: false
+
   /** Frees the cached capture; the next draw records a fresh one. */
   fun release() {
     captureNode?.discardDisplayList()
+    capture?.clear()
     recordedGeneration = -1
   }
 
