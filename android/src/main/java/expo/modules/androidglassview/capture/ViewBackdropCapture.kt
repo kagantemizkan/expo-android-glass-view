@@ -17,6 +17,7 @@ import android.graphics.RectF
 import android.os.Build
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.Animation
 import androidx.annotation.RequiresApi
 import kotlin.math.max
 
@@ -100,12 +101,16 @@ internal class ViewBackdropCapture {
   private var bakedScroll = IntArray(32)
 
   /**
-   * Children the last capture left out, with their geometry at the time ([GEOMETRY_FIELDS]
-   * values each in [culledGeometry]); [culledSet] holds the same views for lookups.
+   * Child lists dispatched inline, rather than through the group's own RenderNode. A screen
+   * replacement can discard a referenced child's display list without moving any views.
    */
-  private val culledViews = ArrayList<View>()
+  private val inlineGroups = ArrayList<InlineGroup>()
+
+  /** Culled children, and children whose transform/clip/alpha we applied ourselves. */
+  private val geometryViews = ArrayList<View>()
+  private var geometry = FloatArray(GEOMETRY_FIELDS * 16)
+  private var geometryTracksAlpha = BooleanArray(16)
   private val culledSet = HashSet<View>()
-  private var culledGeometry = FloatArray(GEOMETRY_FIELDS * 16)
 
   /** Margin around a view's bounds that its drawing may still reach (shadows, borders), in px. */
   private var cullPadding = 0f
@@ -113,24 +118,34 @@ internal class ViewBackdropCapture {
 
   /**
    * Whether the last capture is out of date although the glass itself didn't move: a view whose
-   * scroll offset it baked in has scrolled, or a view it left out has moved, resized or scrolled
-   * (and may now reach the glass).
+   * scroll offset or transform it baked in changed, an inline group changed its children, or a
+   * view it left out moved (and may now reach the glass). RenderNode subtrees stay live without
+   * being traversed here. This check allocates nothing.
    */
   fun changedSinceCapture(): Boolean {
     for (i in bakedViews.indices) {
       val view = bakedViews[i]
       if (view.scrollX != bakedScroll[i * 2] || view.scrollY != bakedScroll[i * 2 + 1]) return true
     }
-    for (i in culledViews.indices) {
-      if (!hasGeometry(culledViews[i], i * GEOMETRY_FIELDS)) return true
+    for (i in geometryViews.indices) {
+      if (!hasGeometry(geometryViews[i], i)) return true
+    }
+    for (i in inlineGroups.indices) {
+      if (inlineGroups[i].hasChanged()) return true
     }
     return false
   }
 
   /** Forgets the views of the last capture (they may belong to a window that is going away). */
   fun clear() {
+    expanded.clear()
+    excluded.clear()
+    selfPath.clear()
+    path.clear()
+    hidden.clear()
     bakedViews.clear()
-    culledViews.clear()
+    inlineGroups.clear()
+    geometryViews.clear()
     culledSet.clear()
   }
 
@@ -143,13 +158,21 @@ internal class ViewBackdropCapture {
   }
 
   private fun cull(view: View) {
-    val offset = culledViews.size * GEOMETRY_FIELDS
-    if (culledGeometry.size < offset + GEOMETRY_FIELDS) {
-      culledGeometry = culledGeometry.copyOf(culledGeometry.size * 2)
-    }
-    culledViews.add(view)
     culledSet.add(view)
-    val g = culledGeometry
+    // A fade outside the capture cannot bring any content into it.
+    bakeGeometry(view, trackAlpha = false)
+  }
+
+  private fun bakeGeometry(view: View, trackAlpha: Boolean = true) {
+    val index = geometryViews.size
+    val offset = index * GEOMETRY_FIELDS
+    if (geometry.size < offset + GEOMETRY_FIELDS) {
+      geometry = geometry.copyOf(geometry.size * 2)
+      geometryTracksAlpha = geometryTracksAlpha.copyOf(geometryTracksAlpha.size * 2)
+    }
+    geometryTracksAlpha[index] = trackAlpha
+    geometryViews.add(view)
+    val g = geometry
     g[offset] = view.left.toFloat()
     g[offset + 1] = view.top.toFloat()
     g[offset + 2] = view.right.toFloat()
@@ -164,10 +187,15 @@ internal class ViewBackdropCapture {
     g[offset + 11] = view.scrollX.toFloat()
     g[offset + 12] = view.scrollY.toFloat()
     g[offset + 13] = view.z
+    g[offset + 14] = view.pivotX
+    g[offset + 15] = view.pivotY
+    g[offset + 16] = view.alpha
+    g[offset + 17] = view.cameraDistance
   }
 
-  private fun hasGeometry(view: View, offset: Int): Boolean {
-    val g = culledGeometry
+  private fun hasGeometry(view: View, index: Int): Boolean {
+    val offset = index * GEOMETRY_FIELDS
+    val g = geometry
     return g[offset] == view.left.toFloat() &&
       g[offset + 1] == view.top.toFloat() &&
       g[offset + 2] == view.right.toFloat() &&
@@ -181,7 +209,11 @@ internal class ViewBackdropCapture {
       g[offset + 10] == view.rotationY &&
       g[offset + 11] == view.scrollX.toFloat() &&
       g[offset + 12] == view.scrollY.toFloat() &&
-      g[offset + 13] == view.z
+      g[offset + 13] == view.z &&
+      g[offset + 14] == view.pivotX &&
+      g[offset + 15] == view.pivotY &&
+      (!geometryTracksAlpha[index] || g[offset + 16] == view.alpha) &&
+      g[offset + 17] == view.cameraDistance
   }
 
   /**
@@ -191,12 +223,7 @@ internal class ViewBackdropCapture {
    * @param glassViews every glass view; the ones outside [source] are ignored.
    */
   fun draw(canvas: Canvas, source: View, self: View, glassViews: Collection<View>) {
-    expanded.clear()
-    excluded.clear()
-    selfPath.clear()
-    bakedViews.clear()
-    culledViews.clear()
-    culledSet.clear()
+    clear()
     cullPadding = CULL_PADDING_DP * source.resources.displayMetrics.density
 
     var ancestor = self.parent
@@ -239,6 +266,8 @@ internal class ViewBackdropCapture {
   }
 
   private fun drawLevel(canvas: Canvas, host: View) {
+    // Snapshot before temporarily hiding children; otherwise every pre-draw sees a change.
+    if (host is ViewGroup) inlineGroups.add(InlineGroup(host))
     if (host is ViewGroup && host in selfPath) {
       drawAncestor(canvas, host)
       return
@@ -321,6 +350,7 @@ internal class ViewBackdropCapture {
         if (child in expanded) {
           drawLevel(canvas, child)
         } else {
+          if (child is ViewGroup) inlineGroups.add(InlineGroup(child))
           bakeScroll(child)
           canvas.translate(-child.scrollX.toFloat(), -child.scrollY.toFloat())
           child.draw(canvas)
@@ -365,6 +395,7 @@ internal class ViewBackdropCapture {
 
   /** The child's matrix, clip and alpha, as its parent applies them; the canvas is at its left/top. */
   private fun applyChildTransform(canvas: Canvas, child: View, clipChildren: Boolean) {
+    bakeGeometry(child)
     val matrix = child.matrix
     if (!matrix.isIdentity) canvas.concat(matrix)
     if (clipChildren) canvas.clipRect(0f, 0f, child.width.toFloat(), child.height.toFloat())
@@ -389,11 +420,37 @@ internal class ViewBackdropCapture {
     return children
   }
 
+  /** Only the direct dispatch boundary is frozen; descendants keep their live RenderNodes. */
+  private class InlineGroup(private val group: ViewGroup) {
+    private val count = group.childCount
+    private val children = Array(count) { group.getChildAt(it) }
+    private val visibility = IntArray(count) { children[it].visibility }
+    private val order = IntArray(count) { group.getChildDrawingOrder(it) }
+    private val z = FloatArray(count) { children[it].z }
+    private val animations = arrayOfNulls<Animation>(count).also { values ->
+      for (i in 0 until count) values[i] = children[i].animation
+    }
+    private val clipChildren = group.clipChildren
+    private val clipToPadding = group.clipToPadding
+
+    fun hasChanged(): Boolean {
+      if (group.childCount != count || group.clipChildren != clipChildren ||
+        group.clipToPadding != clipToPadding) return true
+      for (i in 0 until count) {
+        val child = group.getChildAt(i)
+        if (child !== children[i] || child.visibility != visibility[i] ||
+          group.getChildDrawingOrder(i) != order[i] || child.z != z[i] ||
+          child.animation !== animations[i]) return true
+      }
+      return false
+    }
+  }
+
   companion object {
     private var depth = 0
 
-    /** Geometry values stored per culled view (bounds, transform, scroll, z). */
-    private const val GEOMETRY_FIELDS = 14
+    /** Geometry values stored per culled or manually transformed view. */
+    private const val GEOMETRY_FIELDS = 18
 
     /** How far outside its bounds a view's drawing is assumed to reach (shadows, borders). */
     private const val CULL_PADDING_DP = 8f

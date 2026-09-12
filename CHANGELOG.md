@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Fix: refresh glass backdrops when navigation replaces children in an inline-drawn container,
+  or changes their visibility or drawing order. Tab bars no longer keep references to detached
+  screens. Manually applied transforms and alpha are tracked too, including drawer movement.
+  All glass components share this fix; referenced lists still scroll without re-capturing.
+- `captureRevision` is now 4. Consumer apps need a native rebuild to receive this fix.
+
 ## 0.1.6 — 2026-09-12
 
 - Fix: 0.1.4 and 0.1.5 were published without their compiled JavaScript (`build/`), so Metro

@@ -83,8 +83,8 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   private var dragClaimed = false
 
   // Re-sample when the glass moves on screen (layout, an ancestor scrolling, transforms), when a
-  // container the capture drew inline (not by reference) scrolled — its offset is baked into the
-  // capture — or when a view the capture left out (too far away to be seen through the glass)
+  // container the capture drew inline changed its children, scroll or baked child transforms,
+  // or when a view the capture left out (too far away to be seen through the glass)
   // moved and may now be. A list that is only referenced scrolls live, so scrolling it costs no
   // capture. There is deliberately no global-layout listener: React Native lays out on every
   // state change (e.g. each slider tick updating a label), and re-sampling every glass view each

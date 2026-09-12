@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <activity
+      android:name="expo.modules.androidglassview.capture.CaptureTestActivity"
+      android:exported="false"
+      android:theme="@android:style/Theme.Material.Light.NoActionBar"
+      android:hardwareAccelerated="true" />
+  </application>
+</manifest>

@@ -21,6 +21,7 @@ android {
   defaultConfig {
     versionCode 1
     versionName "0.1.0"
+    testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
   }
   buildFeatures {
     compose true
@@ -36,4 +37,6 @@ dependencies {
   // Same Compose version as @expo/ui for this Expo SDK, so apps using both resolve one runtime.
   implementation 'androidx.compose.foundation:foundation-android:1.10.6'
   implementation 'androidx.compose.ui:ui-android:1.10.6'
+  androidTestImplementation 'androidx.test:runner:1.6.2'
+  androidTestImplementation 'androidx.test.ext:junit:1.2.1'
 }

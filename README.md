@@ -362,6 +362,8 @@ The capture is cached in one RenderNode with its own GPU layer, and every glass 
 - a container it draws inline scrolls: one of its own ancestors, one of their direct children,
   or a container that holds other glass views. A list that is simply behind the glass (deeper in
   another branch, with no glass inside) is referenced, so it scrolls live without a new capture,
+- an inline container's direct children change (including screen replacement, visibility and
+  drawing order), or a child whose transform is drawn inline moves, resizes or changes alpha,
 - a view it left out because it was too far away moves, resizes or scrolls,
 - a glass view is added or removed.
 

@@ -68,7 +68,8 @@ internal class ViewBackdrop(private val host: GlassHostView) : Backdrop {
 
   /**
    * Whether the capture is out of date although the host didn't move: something it drew inline
-   * (not by reference) scrolled, or a view it left out moved (see ViewBackdropCapture).
+   * (not by reference) changed its children or baked geometry, or a view it left out moved
+   * (see ViewBackdropCapture).
    */
   fun changedSinceCapture(): Boolean = capture?.changedSinceCapture() ?: false
 
