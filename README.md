@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/assets/hero.png" alt="Liquid Glass — expo-android-glass-view" width="1040" />
+  <img src="https://raw.githubusercontent.com/kagantemizkan/expo-android-glass-view/5a563ac/.github/assets/hero.png" alt="Liquid Glass — expo-android-glass-view" width="1040" />
 </p>
 
 #
@@ -67,7 +67,7 @@ A container: children render on top of the glass and stay fully interactive.
 </AndroidGlassView>
 ```
 
-<img src=".github/assets/glasses.gif" alt="AndroidGlassView with different props: default, frosted, lens, prism, tint, no shadow" width="480" />
+<img src="https://raw.githubusercontent.com/kagantemizkan/expo-android-glass-view/5a563ac/.github/assets/glasses.gif" alt="AndroidGlassView with different props: default, frosted, lens, prism, tint, no shadow" width="480" />
 
 Accepts every `View` prop plus:
 
@@ -94,7 +94,7 @@ or `surfaceColor` instead.
 Kyant's liquid button: while pressed, the glass swells, stretches towards the finger and a
 highlight follows it.
 
-<img src=".github/assets/buttons.gif" alt="AndroidGlassButton" width="480" />
+<img src="https://raw.githubusercontent.com/kagantemizkan/expo-android-glass-view/5a563ac/.github/assets/buttons.gif" alt="AndroidGlassButton" width="480" />
 
 ```tsx
 <AndroidGlassButton title="Save" onPress={save} />
@@ -120,7 +120,7 @@ don't put interactive elements in a button.
 
 ## `AndroidGlassToggle`
 
-<img src=".github/assets/toggles.gif" alt="AndroidGlassToggle" width="480" />
+<img src="https://raw.githubusercontent.com/kagantemizkan/expo-android-glass-view/5a563ac/.github/assets/toggles.gif" alt="AndroidGlassToggle" width="480" />
 
 ```tsx
 <AndroidGlassToggle value={enabled} onValueChange={setEnabled} />
@@ -141,7 +141,7 @@ new value, the switch returns to `value`.
 
 ## `AndroidGlassSlider`
 
-<img src=".github/assets/sliders.gif" alt="AndroidGlassSlider" width="480" />
+<img src="https://raw.githubusercontent.com/kagantemizkan/expo-android-glass-view/5a563ac/.github/assets/sliders.gif" alt="AndroidGlassSlider" width="480" />
 
 ```tsx
 <AndroidGlassSlider value={volume} maximumValue={100} onValueChange={setVolume} />
@@ -169,7 +169,7 @@ Kyant's iOS 26 style tab bar: a glass capsule with a liquid selection droplet yo
 between tabs. Under the droplet the tab content takes the accent colour and is magnified while
 pressed.
 
-<img src=".github/assets/tabbar.gif" alt="AndroidGlassBottomTabs" width="480" />
+<img src="https://raw.githubusercontent.com/kagantemizkan/expo-android-glass-view/5a563ac/.github/assets/tabbar.gif" alt="AndroidGlassBottomTabs" width="480" />
 
 ```tsx
 <AndroidGlassBottomTabs

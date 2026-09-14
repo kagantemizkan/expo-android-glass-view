@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.9 — 2026-09-14
+
+- Republish the 0.1.3 implementation with the updated README and npm-compatible demo image URLs.
+- No runtime changes from 0.1.3; supersedes the 0.1.4–0.1.8 publications.
+
 ## 0.1.3 — 2026-09-11
 
 - Fix a crash when navigating to or from a screen that has a glass view (Expo Router and React
