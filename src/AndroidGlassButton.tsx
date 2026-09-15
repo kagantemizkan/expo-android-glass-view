@@ -7,6 +7,7 @@ const DEFAULT_FALLBACK_COLOR = 'rgba(255, 255, 255, 0.7)';
 
 /** iOS and web fallback: a translucent capsule button with the same API. */
 export default function AndroidGlassButton({
+  theme = 'light',
   onPress,
   title,
   titleStyle,
@@ -17,6 +18,7 @@ export default function AndroidGlassButton({
   style,
   children,
   blurRadius: _blurRadius,
+  blurGradient: _blurGradient,
   refractionHeight: _refractionHeight,
   refractionAmount: _refractionAmount,
   chromaticAberration: _chromaticAberration,
@@ -35,14 +37,23 @@ export default function AndroidGlassButton({
       style={({ pressed }) => [
         styles.button,
         {
-          backgroundColor: tintColor ?? surfaceColor ?? fallbackColor ?? DEFAULT_FALLBACK_COLOR,
+          backgroundColor:
+            tintColor ??
+            surfaceColor ??
+            fallbackColor ??
+            (theme === 'dark' ? '#242b33' : DEFAULT_FALLBACK_COLOR),
           borderRadius: cornerRadius ?? 999,
           opacity: pressed ? 0.75 : 1,
         },
         style,
       ]}>
       {title != null ? (
-        <Text style={[styles.title, tintColor != null && styles.titleOnTint, titleStyle]}>
+        <Text
+          style={[
+            styles.title,
+            (tintColor != null || theme === 'dark') && styles.titleOnTint,
+            titleStyle,
+          ]}>
           {title}
         </Text>
       ) : null}

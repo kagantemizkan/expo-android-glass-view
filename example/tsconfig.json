@@ -3,8 +3,21 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "expo-android-glass-view": ["../src/index"],
-      "expo-android-glass-view/*": ["../src/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@/assets/*": [
+        "./assets/*"
+      ],
+      "expo-android-glass-view": [
+        "../src/index"
+      ]
     }
-  }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }

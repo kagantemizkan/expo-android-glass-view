@@ -17,18 +17,25 @@ class ExpoAndroidGlassViewModule : Module() {
 
     View(AndroidGlassView::class) {
       Name("AndroidGlassView")
+      Prop("theme") { view: AndroidGlassView, value: String? ->
+        view.glassState.themed = value != null
+        view.glassState.dark = value == "dark"
+      }
 
       Prop("cornerRadius") { view: AndroidGlassView, value: Float? ->
         view.glassState.cornerRadius = value ?: GlassState.DEFAULT_CORNER_RADIUS
       }
+      Prop("blurGradient") { view: AndroidGlassView, value: String? ->
+        view.glassState.blurGradient = value == "top-to-bottom"
+      }
       Prop("blurRadius") { view: AndroidGlassView, value: Float? ->
-        view.glassState.blurRadius = value ?: GlassState.DEFAULT_BLUR_RADIUS
+        view.glassState.blurOverride = value
       }
       Prop("refractionHeight") { view: AndroidGlassView, value: Float? ->
-        view.glassState.refractionHeight = value ?: GlassState.DEFAULT_REFRACTION_HEIGHT
+        view.glassState.heightOverride = value
       }
       Prop("refractionAmount") { view: AndroidGlassView, value: Float? ->
-        view.glassState.refractionAmount = value ?: GlassState.DEFAULT_REFRACTION_AMOUNT
+        view.glassState.amountOverride = value
       }
       Prop("chromaticAberration") { view: AndroidGlassView, value: Boolean? ->
         view.glassState.chromaticAberration = value ?: false
@@ -37,7 +44,7 @@ class ExpoAndroidGlassViewModule : Module() {
         view.glassState.depthEffect = value ?: false
       }
       Prop("vibrancy") { view: AndroidGlassView, value: Boolean? ->
-        view.glassState.vibrancy = value ?: true
+        view.glassState.vibrancyOverride = value
       }
       Prop("highlight") { view: AndroidGlassView, value: Boolean? ->
         view.glassState.highlight = value ?: true
@@ -53,7 +60,7 @@ class ExpoAndroidGlassViewModule : Module() {
         view.glassState.surfaceColor = value.toColorOr(Color.Unspecified)
       }
       Prop("fallbackColor") { view: AndroidGlassView, value: Int? ->
-        view.glassState.fallbackColor = value.toColorOr(GlassState.DEFAULT_FALLBACK_COLOR)
+        view.glassState.fallbackOverride = value?.let { Color(it) }
       }
 
       ReactChildren()
@@ -61,19 +68,23 @@ class ExpoAndroidGlassViewModule : Module() {
 
     View(AndroidGlassButton::class) {
       Name("AndroidGlassButton")
+      Prop("theme") { view: AndroidGlassButton, value: String? -> view.glassState.dark = value == "dark" }
       Events("onPress")
 
       Prop("cornerRadius") { view: AndroidGlassButton, value: Float? ->
         view.glassState.cornerRadius = value ?: AndroidGlassButton.DEFAULT_CORNER_RADIUS
       }
+      Prop("blurGradient") { view: AndroidGlassButton, value: String? ->
+        view.glassState.blurGradient = value == "top-to-bottom"
+      }
       Prop("blurRadius") { view: AndroidGlassButton, value: Float? ->
-        view.glassState.blurRadius = value ?: GlassState.DEFAULT_BLUR_RADIUS
+        view.glassState.blurOverride = value
       }
       Prop("refractionHeight") { view: AndroidGlassButton, value: Float? ->
-        view.glassState.refractionHeight = value ?: GlassState.DEFAULT_REFRACTION_HEIGHT
+        view.glassState.heightOverride = value
       }
       Prop("refractionAmount") { view: AndroidGlassButton, value: Float? ->
-        view.glassState.refractionAmount = value ?: GlassState.DEFAULT_REFRACTION_AMOUNT
+        view.glassState.amountOverride = value
       }
       Prop("chromaticAberration") { view: AndroidGlassButton, value: Boolean? ->
         view.glassState.chromaticAberration = value ?: false
@@ -82,7 +93,7 @@ class ExpoAndroidGlassViewModule : Module() {
         view.glassState.depthEffect = value ?: false
       }
       Prop("vibrancy") { view: AndroidGlassButton, value: Boolean? ->
-        view.glassState.vibrancy = value ?: true
+        view.glassState.vibrancyOverride = value
       }
       Prop("highlight") { view: AndroidGlassButton, value: Boolean? ->
         view.glassState.highlight = value ?: true
@@ -97,7 +108,7 @@ class ExpoAndroidGlassViewModule : Module() {
         view.glassState.surfaceColor = value.toColorOr(Color.Unspecified)
       }
       Prop("fallbackColor") { view: AndroidGlassButton, value: Int? ->
-        view.glassState.fallbackColor = value.toColorOr(GlassState.DEFAULT_FALLBACK_COLOR)
+        view.glassState.fallbackOverride = value?.let { Color(it) }
       }
       Prop("interactive") { view: AndroidGlassButton, value: Boolean? ->
         view.interactive = value ?: true
@@ -108,6 +119,21 @@ class ExpoAndroidGlassViewModule : Module() {
 
     // Toggle, slider and tab bar: the user changes the value natively too, so the value prop is
     // only applied (once all props of an update are set) when JS has caught up; see ControlledProp.
+
+    View(AndroidGlassMenuPanel::class) {
+      Name("AndroidGlassMenuPanel")
+      Events("onItemSelected", "onClosed", "onNavigate", "onDismissRequest")
+      ReactChildren()
+      Prop("customHeight") { view: AndroidGlassMenuPanel, value: Float? -> view.customHeight = (value ?: 0f).coerceAtLeast(0f) }
+      Prop("itemsJson") { view: AndroidGlassMenuPanel, value: String -> view.setItems(value) }
+      Prop("expanded") { view: AndroidGlassMenuPanel, value: Boolean -> view.expanded = value }
+      Prop("dark") { view: AndroidGlassMenuPanel, value: Boolean -> view.dark = value }
+      Prop("originX") { view: AndroidGlassMenuPanel, value: Float -> view.originX = value.coerceIn(0f, 1f) }
+      Prop("originY") { view: AndroidGlassMenuPanel, value: Float -> view.originY = value.coerceIn(0f, 1f) }
+      Prop("rowHeight") { view: AndroidGlassMenuPanel, value: Float -> view.rowHeight = value.coerceAtLeast(44f) }
+      Prop("backRequest") { view: AndroidGlassMenuPanel, value: Int -> view.backRequest = value }
+      Prop("sourceIcon") { view: AndroidGlassMenuPanel, value: String? -> view.sourceIcon = value ?: "" }
+    }
 
     View(AndroidGlassToggle::class) {
       Name("AndroidGlassToggle")
@@ -161,6 +187,46 @@ class ExpoAndroidGlassViewModule : Module() {
 
     View(AndroidGlassBottomTabs::class) {
       Name("AndroidGlassBottomTabs")
+      Prop("cornerRadius") { view: AndroidGlassBottomTabs, value: Float? ->
+        view.glassState.cornerRadius = value ?: 999f
+      }
+      Prop("blurGradient") { view: AndroidGlassBottomTabs, value: String? ->
+        view.glassState.blurGradient = value == "top-to-bottom"
+      }
+      Prop("blurRadius") { view: AndroidGlassBottomTabs, value: Float? ->
+        view.glassState.blurOverride = value
+      }
+      Prop("refractionHeight") { view: AndroidGlassBottomTabs, value: Float? ->
+        view.glassState.heightOverride = value
+      }
+      Prop("refractionAmount") { view: AndroidGlassBottomTabs, value: Float? ->
+        view.glassState.amountOverride = value
+      }
+      Prop("chromaticAberration") { view: AndroidGlassBottomTabs, value: Boolean? ->
+        view.glassState.chromaticAberration = value ?: false
+      }
+      Prop("depthEffect") { view: AndroidGlassBottomTabs, value: Boolean? ->
+        view.glassState.depthEffect = value ?: false
+      }
+      Prop("vibrancy") { view: AndroidGlassBottomTabs, value: Boolean? ->
+        view.glassState.vibrancyOverride = value
+      }
+      Prop("highlight") { view: AndroidGlassBottomTabs, value: Boolean? ->
+        view.glassState.highlight = value ?: true
+      }
+      Prop("shadow") { view: AndroidGlassBottomTabs, value: Boolean? ->
+        view.glassState.shadow = value ?: true
+      }
+      Prop("tintColor") { view: AndroidGlassBottomTabs, value: Int? ->
+        view.glassState.tintColor = value.toColorOr(Color.Unspecified)
+      }
+      Prop("surfaceColor") { view: AndroidGlassBottomTabs, value: Int? ->
+        view.glassState.surfaceColor = value.toColorOr(Color.Unspecified)
+      }
+      Prop("fallbackColor") { view: AndroidGlassBottomTabs, value: Int? ->
+        view.glassState.fallbackOverride = value?.let { Color(it) }
+      }
+      Prop("theme") { view: AndroidGlassBottomTabs, value: String? -> view.glassState.dark = value == "dark" }
       Events("onTabSelected", "onMinimizedChange")
 
       Prop("minimized") { view: AndroidGlassBottomTabs, value: Boolean? ->

@@ -4,7 +4,8 @@
  *
  * Vendored into expo-android-glass-view. Changes from upstream: package relocated
  * from com.kyant.backdrop, Kotlin Multiplatform expect/actual merged into Android-only
- * code, dependency on io.github.kyant0:shapes removed, Kotlin 2.1 compatible syntax.
+ * code, dependency on io.github.kyant0:shapes removed, Kotlin 2.1 compatible syntax,
+ * optional external clipping for independently animated menu silhouettes.
  */
 package expo.modules.androidglassview.backdrop
 
@@ -59,7 +60,8 @@ fun Modifier.drawPlainBackdrop(
     onDrawBehind: (DrawScope.() -> Unit)? = null,
     onDrawBackdrop: DrawScope.(drawBackdrop: DrawScope.() -> Unit) -> Unit = DefaultOnDrawBackdrop,
     onDrawSurface: (DrawScope.() -> Unit)? = null,
-    onDrawFront: (DrawScope.() -> Unit)? = null
+    onDrawFront: (DrawScope.() -> Unit)? = null,
+    clipToShape: Boolean = true
 ): Modifier {
     val shapeProvider = ShapeProvider(shape)
     return this
@@ -80,7 +82,8 @@ fun Modifier.drawPlainBackdrop(
                 onDrawBehind = onDrawBehind,
                 onDrawBackdrop = onDrawBackdrop,
                 onDrawSurface = onDrawSurface,
-                onDrawFront = onDrawFront
+                onDrawFront = onDrawFront,
+                clipToShape = clipToShape
             )
         )
 }
@@ -97,7 +100,8 @@ fun Modifier.drawBackdrop(
     onDrawBehind: (DrawScope.() -> Unit)? = null,
     onDrawBackdrop: DrawScope.(drawBackdrop: DrawScope.() -> Unit) -> Unit = DefaultOnDrawBackdrop,
     onDrawSurface: (DrawScope.() -> Unit)? = null,
-    onDrawFront: (DrawScope.() -> Unit)? = null
+    onDrawFront: (DrawScope.() -> Unit)? = null,
+    clipToShape: Boolean = true
 ): Modifier {
     val shapeProvider = ShapeProvider(shape)
     return this
@@ -148,7 +152,8 @@ fun Modifier.drawBackdrop(
                 onDrawBehind = onDrawBehind,
                 onDrawBackdrop = onDrawBackdrop,
                 onDrawSurface = onDrawSurface,
-                onDrawFront = onDrawFront
+                onDrawFront = onDrawFront,
+                clipToShape = clipToShape
             )
         )
 }
@@ -162,7 +167,8 @@ private class DrawBackdropElement(
     val onDrawBehind: (DrawScope.() -> Unit)?,
     val onDrawBackdrop: DrawScope.(drawBackdrop: DrawScope.() -> Unit) -> Unit,
     val onDrawSurface: (DrawScope.() -> Unit)?,
-    val onDrawFront: (DrawScope.() -> Unit)?
+    val onDrawFront: (DrawScope.() -> Unit)?,
+    val clipToShape: Boolean
 ) : ModifierNodeElement<DrawBackdropNode>() {
 
     override fun create(): DrawBackdropNode {
@@ -175,7 +181,8 @@ private class DrawBackdropElement(
             onDrawBehind = onDrawBehind,
             onDrawBackdrop = onDrawBackdrop,
             onDrawSurface = onDrawSurface,
-            onDrawFront = onDrawFront
+            onDrawFront = onDrawFront,
+            clipToShape = clipToShape
         )
     }
 
@@ -192,6 +199,7 @@ private class DrawBackdropElement(
         node.onDrawBackdrop = onDrawBackdrop
         node.onDrawSurface = onDrawSurface
         node.onDrawFront = onDrawFront
+        node.clipToShape = clipToShape
         node.invalidateDrawCache()
     }
 
@@ -206,6 +214,7 @@ private class DrawBackdropElement(
         properties["onDrawBackdrop"] = onDrawBackdrop
         properties["onDrawSurface"] = onDrawSurface
         properties["onDrawFront"] = onDrawFront
+        properties["clipToShape"] = clipToShape
     }
 
     override fun equals(other: Any?): Boolean {
@@ -221,6 +230,7 @@ private class DrawBackdropElement(
         if (onDrawBackdrop != other.onDrawBackdrop) return false
         if (onDrawSurface != other.onDrawSurface) return false
         if (onDrawFront != other.onDrawFront) return false
+        if (clipToShape != other.clipToShape) return false
 
         return true
     }
@@ -235,6 +245,7 @@ private class DrawBackdropElement(
         result = 31 * result + onDrawBackdrop.hashCode()
         result = 31 * result + (onDrawSurface?.hashCode() ?: 0)
         result = 31 * result + (onDrawFront?.hashCode() ?: 0)
+        result = 31 * result + clipToShape.hashCode()
         return result
     }
 }
@@ -248,7 +259,8 @@ private class DrawBackdropNode(
     var onDrawBehind: (DrawScope.() -> Unit)?,
     var onDrawBackdrop: DrawScope.(drawBackdrop: DrawScope.() -> Unit) -> Unit,
     var onDrawSurface: (DrawScope.() -> Unit)?,
-    var onDrawFront: (DrawScope.() -> Unit)?
+    var onDrawFront: (DrawScope.() -> Unit)?,
+    var clipToShape: Boolean
 ) : LayoutModifierNode, DrawModifierNode, GlobalPositionAwareModifierNode, ObserverModifierNode, Modifier.Node() {
 
     private val effectScope =
@@ -260,7 +272,7 @@ private class DrawBackdropNode(
     private var graphicsLayer: GraphicsLayer? = null
 
     private val layoutLayerBlock: GraphicsLayerScope.() -> Unit = {
-        clip = true
+        clip = clipToShape
         shape = shapeProvider.shape
         compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
     }

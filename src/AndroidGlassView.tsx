@@ -10,9 +10,11 @@ const DEFAULT_FALLBACK_COLOR = 'rgba(255, 255, 255, 0.7)';
  * with the same shape. Children render as usual.
  */
 export default function AndroidGlassView({
+  theme,
   cornerRadius,
   fallbackColor,
   blurRadius: _blurRadius,
+  blurGradient: _blurGradient,
   refractionHeight: _refractionHeight,
   refractionAmount: _refractionAmount,
   chromaticAberration: _chromaticAberration,
@@ -30,7 +32,7 @@ export default function AndroidGlassView({
       {...rest}
       style={[
         {
-          backgroundColor: fallbackColor ?? DEFAULT_FALLBACK_COLOR,
+          backgroundColor: fallbackColor ?? (theme === 'dark' ? '#242b33' : DEFAULT_FALLBACK_COLOR),
           borderRadius: cornerRadius ?? 24,
           overflow: 'hidden',
         },

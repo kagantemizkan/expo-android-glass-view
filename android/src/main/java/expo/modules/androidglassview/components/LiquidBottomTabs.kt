@@ -14,7 +14,7 @@ package expo.modules.androidglassview.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
@@ -47,6 +47,10 @@ import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
 import expo.modules.androidglassview.backdrop.Backdrop
+import expo.modules.androidglassview.GlassState
+import expo.modules.androidglassview.glassEffects
+import expo.modules.androidglassview.glassSurface
+import expo.modules.androidglassview.backdrop.isRenderEffectSupported
 import expo.modules.androidglassview.backdrop.backdrops.layerBackdrop
 import expo.modules.androidglassview.backdrop.backdrops.rememberCombinedBackdrop
 import expo.modules.androidglassview.backdrop.backdrops.rememberLayerBackdrop
@@ -77,6 +81,7 @@ internal fun LiquidBottomTabs(
     selectedTabIndex: () -> Int,
     onTabSelected: (index: Int) -> Unit,
     backdrop: Backdrop,
+    state: GlassState,
     tabsCount: Int,
     drawTabs: DrawScope.(origin: Offset, frame: TabsFrame, tint: Color?, scale: Float) -> Unit,
     modifier: Modifier = Modifier,
@@ -85,13 +90,11 @@ internal fun LiquidBottomTabs(
     accentColor: Color? = null,
     containerColor: Color? = null
 ) {
-    val isLightTheme = !isSystemInDarkTheme()
+    val isLightTheme = !state.dark
+    val effectsSupported = isRenderEffectSupported()
     val accent = accentColor
         ?: if (isLightTheme) Color(0xFF0088FF)
         else Color(0xFF0091FF)
-    val container = containerColor
-        ?: if (isLightTheme) Color(0xFFFAFAFA).copy(0.4f)
-        else Color(0xFF121212).copy(0.4f)
 
     val tabsBackdrop = rememberLayerBackdrop()
     val currentOnExpand by rememberUpdatedState(onExpand)
@@ -201,20 +204,20 @@ internal fun LiquidBottomTabs(
                 }
                 .drawBackdrop(
                     backdrop = backdrop,
-                    shape = { CapsuleShape },
-                    effects = {
-                        val sizeScale = geometry.sizeScale(minimizeAnimation.value)
-                        vibrancy()
-                        blur(8f.dp.toPx())
-                        lens(24f.dp.toPx() * sizeScale, 24f.dp.toPx() * sizeScale)
-                    },
+                    shape = { RoundedCornerShape(state.cornerRadius.dp) },
+                    effects = { glassEffects(state) },
+                    highlight = { if (state.highlight) state.rim else null },
+                    shadow = { if (state.shadow) state.dropShadow else null },
                     layerBlock = {
                         val progress = dampedDragAnimation.pressProgress
                         val scale = lerp(1f, 1f + 16f.dp.toPx() / size.width, progress)
                         scaleX = scale
                         scaleY = scale
                     },
-                    onDrawSurface = { drawRect(container) },
+                    onDrawSurface = {
+                        glassSurface(state, effectsSupported)
+                        containerColor?.let { drawRect(it) }
+                    },
                     onDrawFront = {
                         val progress = minimizeAnimation.value
                         drawTabs(
@@ -300,22 +303,14 @@ internal fun LiquidBottomTabs(
                 }
                 .drawBackdrop(
                     backdrop = backdrop,
-                    shape = { CapsuleShape },
-                    effects = {
-                        val progress = dampedDragAnimation.pressProgress
-                        val sizeScale = geometry.sizeScale(minimizeAnimation.value)
-                        vibrancy()
-                        blur(8f.dp.toPx())
-                        lens(
-                            24f.dp.toPx() * progress * sizeScale,
-                            24f.dp.toPx() * progress * sizeScale
-                        )
+                    shape = { RoundedCornerShape(state.cornerRadius.dp) },
+                    effects = { glassEffects(state) },
+                    highlight = { if (state.highlight) state.rim else null },
+                    shadow = { if (state.shadow) state.dropShadow else null },
+                    onDrawSurface = {
+                        glassSurface(state, effectsSupported)
+                        containerColor?.let { drawRect(it) }
                     },
-                    highlight = {
-                        val progress = dampedDragAnimation.pressProgress
-                        Highlight.Default.copy(alpha = progress)
-                    },
-                    onDrawSurface = { drawRect(container) },
                     onDrawFront = {
                         val progress = minimizeAnimation.value
                         drawTabs(

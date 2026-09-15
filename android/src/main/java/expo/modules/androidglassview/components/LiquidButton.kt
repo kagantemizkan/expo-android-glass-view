@@ -59,8 +59,8 @@ internal fun LiquidButton(
                 backdrop = backdrop,
                 shape = { RoundedCornerShape(state.cornerRadius.dp) },
                 effects = { glassEffects(state) },
-                highlight = { if (state.highlight) Highlight.Default else null },
-                shadow = { if (state.shadow) Shadow.Default else null },
+                highlight = { if (state.highlight) state.rim else null },
+                shadow = { if (state.shadow) state.dropShadow else null },
                 layerBlock = if (isInteractive) {
                     {
                         val width = size.width

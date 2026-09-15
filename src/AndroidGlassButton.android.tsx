@@ -19,6 +19,7 @@ const NativeAndroidGlassButton: React.ComponentType<NativeAndroidGlassButtonProp
   requireNativeView('ExpoAndroidGlassView', 'AndroidGlassButton');
 
 export default function AndroidGlassButton({
+  theme = 'light',
   onPress,
   title,
   titleStyle,
@@ -35,6 +36,7 @@ export default function AndroidGlassButton({
     <NativeAndroidGlassButton
       accessibilityRole="button"
       {...rest}
+      theme={theme}
       style={[styles.button, style]}
       cornerRadius={cornerRadius ?? (typeof borderRadius === 'number' ? borderRadius : undefined)}
       tintColor={toNativeColor(tintColor)}
@@ -42,7 +44,12 @@ export default function AndroidGlassButton({
       fallbackColor={toNativeColor(fallbackColor)}
       onPress={onPress ? () => onPress() : undefined}>
       {title != null ? (
-        <Text style={[styles.title, tintColor != null && styles.titleOnTint, titleStyle]}>
+        <Text
+          style={[
+            styles.title,
+            (tintColor != null || theme === 'dark') && styles.titleOnTint,
+            titleStyle,
+          ]}>
           {title}
         </Text>
       ) : null}

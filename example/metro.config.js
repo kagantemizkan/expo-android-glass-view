@@ -1,35 +1,26 @@
-// Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
 const config = getDefaultConfig(__dirname);
+const repositoryRoot = path.resolve(__dirname, '..');
+config.watchFolders = [repositoryRoot];
+config.resolver.nodeModulesPaths = [
+  path.join(__dirname, 'node_modules'),
+  path.join(repositoryRoot, 'node_modules'),
+];
 
-// npm v7+ will install ../node_modules/react and ../node_modules/react-native because of peerDependencies.
-// To prevent the incompatible react-native between ./node_modules/react-native and ../node_modules/react-native,
-// excludes the one from the parent folder when bundling.
+// Use one React / React Native instance even when the library has its own dev dependencies.
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 config.resolver.blockList = [
   ...Array.from(config.resolver.blockList ?? []),
-  // On windows the path will resolve with `\`. We need to escape it with `\\` for the RegExp.
-  new RegExp(path.resolve('..', 'node_modules', 'react').replace(/\\/g, '\\\\')),
-  new RegExp(path.resolve('..', 'node_modules', 'react-native').replace(/\\/g, '\\\\')),
+  ...['react', 'react-native'].map(
+    (name) => new RegExp(`${escapeRegex(path.join(repositoryRoot, 'node_modules', name))}[/\\\\].*`)
+  ),
 ];
-
-config.resolver.nodeModulesPaths = [
-  path.resolve(__dirname, './node_modules'),
-  path.resolve(__dirname, '../node_modules'),
-];
-
-config.resolver.extraNodeModules = {
-  'expo-android-glass-view': '..',
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'expo-android-glass-view') {
+    return { type: 'sourceFile', filePath: path.join(repositoryRoot, 'src/index.ts') };
+  }
+  return context.resolveRequest(context, moduleName, platform);
 };
-
-config.watchFolders = [path.resolve(__dirname, '..')];
-
-config.transformer.getTransformOptions = async () => ({
-  transform: {
-    experimentalImportSupport: false,
-    inlineRequires: true,
-  },
-});
-
 module.exports = config;

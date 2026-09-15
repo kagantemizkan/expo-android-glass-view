@@ -2,11 +2,11 @@
   <img src="https://raw.githubusercontent.com/kagantemizkan/expo-android-glass-view/5a563ac/.github/assets/hero.png" alt="Liquid Glass — expo-android-glass-view" width="1040" />
 </p>
 
-#
+# expo-android-glass-view
 
 Liquid Glass for React Native on **Android**: real refraction, blur, vibrancy and rim
 highlights behind any React content, rendered with Jetpack Compose — plus ready-made glass
-buttons, toggles, sliders and a bottom tab bar.
+buttons, toggles, sliders, a bottom tab bar and anchored menus.
 
 The glass effects and the components come from
 [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass). The part that lets
@@ -27,14 +27,21 @@ import {
   AndroidGlassSlider,
   AndroidGlassBottomTabs,
   AndroidGlassTab,
+  AndroidGlassMenu,
+  AndroidGlassMenuProvider,
   MinimizeOnScrollProvider,
   useMinimizeOnScrollHandler,
   useMinimizeOnScroll,
 } from 'expo-android-glass-view';
 ```
 
-No wrapper or provider is needed: every glass component samples whatever is drawn behind it in
-the same window, and keeps up with scrolling lists, animations and layout changes.
+Glass components sample what is drawn behind them in the same window, keeping up with
+scrolling lists, animations and layout changes. View, Button, Toggle, Slider and BottomTabs
+need no provider. Menus require `AndroidGlassMenuProvider` above the navigator.
+
+Version **0.1.10** adds anchored menus with custom React content, optional light/dark materials,
+and configurable tab bar glass effects.
+See [CHANGELOG.md](./CHANGELOG.md) for the release notes.
 
 ## Platforms
 
@@ -57,6 +64,9 @@ npx expo run:android
 
 For bare React Native apps, [install Expo Modules](https://docs.expo.dev/bare/installing-expo-modules/) first.
 
+When upgrading to 0.1.10, rebuild your native app or development client. The new menu and
+BottomTabs props require the matching native binary; updating JavaScript alone is insufficient.
+
 ## `AndroidGlassView`
 
 A container: children render on top of the glass and stay fully interactive.
@@ -71,20 +81,22 @@ A container: children render on top of the glass and stay fully interactive.
 
 Accepts every `View` prop plus:
 
-| Prop                  | Type         | Default                         | Description                                                                           |
-| --------------------- | ------------ | ------------------------------- | ------------------------------------------------------------------------------------- |
-| `cornerRadius`        | `number`     | `style.borderRadius`, else `24` | Corner radius of the glass shape in dp. Use a large value (e.g. `999`) for a capsule. |
-| `blurRadius`          | `number`     | `2`                             | Backdrop blur in dp. `0` disables it.                                                 |
-| `refractionHeight`    | `number`     | `12`                            | Width of the refracting rim in dp. `0` disables refraction.                           |
-| `refractionAmount`    | `number`     | `24`                            | How far content is bent at the rim, in dp.                                            |
-| `chromaticAberration` | `boolean`    | `false`                         | Split the refraction per colour channel (prism fringe).                               |
-| `depthEffect`         | `boolean`    | `false`                         | Stronger, depth-like bending towards the rim.                                         |
-| `vibrancy`            | `boolean`    | `true`                          | Boost the saturation of what is behind the glass.                                     |
-| `highlight`           | `boolean`    | `true`                          | Specular highlight along the rim.                                                     |
-| `shadow`              | `boolean`    | `true`                          | Soft drop shadow around the shape.                                                    |
-| `tintColor`           | `ColorValue` | —                               | Colour tint mixed into the glass.                                                     |
-| `surfaceColor`        | `ColorValue` | —                               | Flat colour painted over the glass, on top of the refraction.                         |
-| `fallbackColor`       | `ColorValue` | `rgba(255,255,255,0.7)`         | Surface used where the effect cannot run (see _Platforms_).                           |
+| Prop                  | Type                | Default                                            | Description                                                                                                                                   |
+| --------------------- | ------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `theme`               | `"light" \| "dark"` | omitted                                            | Optional appearance; omission preserves the original untinted glass.                                                                          |
+| `cornerRadius`        | `number`            | `style.borderRadius`, else `24`                    | Corner radius of the glass shape in dp. Use a large value (e.g. `999`) for a capsule.                                                         |
+| `blurRadius`          | `number`            | `2` unthemed / `9` themed                          | Backdrop blur in dp. `0` disables it.                                                                                                         |
+| `blurGradient`        | `"top-to-bottom"`   | omitted                                            | Android 13+: blur decreases linearly from `blurRadius` at the top to zero at the bottom. Omit for uniform blur; Android 12 uses uniform blur. |
+| `refractionHeight`    | `number`            | `12` unthemed / `2` themed                         | Width of the refracting rim in dp. `0` disables refraction.                                                                                   |
+| `refractionAmount`    | `number`            | `24` unthemed / `3` themed                         | How far content is bent at the rim, in dp.                                                                                                    |
+| `chromaticAberration` | `boolean`           | `false`                                            | Split the refraction per colour channel (prism fringe).                                                                                       |
+| `depthEffect`         | `boolean`           | `false`                                            | Stronger, depth-like bending towards the rim.                                                                                                 |
+| `vibrancy`            | `boolean`           | `true` unthemed / `false` themed                   | Boost the saturation of what is behind the glass.                                                                                             |
+| `highlight`           | `boolean`           | `true`                                             | Specular highlight along the rim.                                                                                                             |
+| `shadow`              | `boolean`           | `true`                                             | Soft drop shadow around the shape.                                                                                                            |
+| `tintColor`           | `ColorValue`        | —                                                  | Colour tint mixed into the glass.                                                                                                             |
+| `surfaceColor`        | `ColorValue`        | —                                                  | Flat colour painted over the glass, on top of the refraction.                                                                                 |
+| `fallbackColor`       | `ColorValue`        | `#242b33` dark / `rgba(255,255,255,0.7)` otherwise | Surface used where the effect cannot run (see _Platforms_).                                                                                   |
 
 Don't set `backgroundColor` on a glass view — it would paint over the effect. Use `tintColor`
 or `surfaceColor` instead.
@@ -105,14 +117,14 @@ highlight follows it.
 </AndroidGlassButton>
 ```
 
-Takes every `AndroidGlassView` prop (`cornerRadius` defaults to a capsule) plus:
+Takes every `AndroidGlassView` prop, with `theme="light"` and a capsule corner radius by default, plus:
 
-| Prop          | Type         | Default | Description                                          |
-| ------------- | ------------ | ------- | ---------------------------------------------------- |
-| `onPress`     | `() => void` | —       | Called on tap.                                       |
-| `title`       | `string`     | —       | Convenience label (15 sp; white on a tinted button). |
-| `titleStyle`  | `TextStyle`  | —       | Style for `title`.                                   |
-| `interactive` | `boolean`    | `true`  | Press and drag deformation.                          |
+| Prop          | Type         | Default | Description                                                 |
+| ------------- | ------------ | ------- | ----------------------------------------------------------- |
+| `onPress`     | `() => void` | —       | Called on tap.                                              |
+| `title`       | `string`     | —       | Convenience label (15 sp; white with dark theme or a tint). |
+| `titleStyle`  | `TextStyle`  | —       | Style for `title`.                                          |
+| `interactive` | `boolean`    | `true`  | Press and drag deformation.                                 |
 
 The default size is 48 dp high with 16 dp horizontal padding; override it with `style`. The
 children are drawn _inside_ the glass (clipped to it, deformed with it), so they are decorative:
@@ -169,6 +181,31 @@ Kyant's iOS 26 style tab bar: a glass capsule with a liquid selection droplet yo
 between tabs. Under the droplet the tab content takes the accent colour and is magnified while
 pressed.
 
+All glass surface options are optional: `cornerRadius`, `blurRadius`, `blurGradient`, `refractionHeight`,
+`refractionAmount`, `chromaticAberration`, `depthEffect`, `vibrancy`, `highlight`,
+`shadow`, `tintColor`, `surfaceColor`, and `fallbackColor`. Omitted options preserve
+existing theme defaults and the capsule shape. Removing an override restores its default.
+These options affect the bar surface; the selection droplet retains its own optics.
+`containerColor` is painted above tint/surface colours. On iOS/web, optical effects are
+unavailable; the fallback uses the supplied colours and corner radius.
+
+`opacity` (0–1) fades the entire bar including icons and labels. It overrides
+`style.opacity` only when supplied; otherwise the style works as before.
+
+```tsx
+<AndroidGlassBottomTabs
+  theme="dark"
+  opacity={0.85}
+  blurRadius={16}
+  refractionHeight={8}
+  refractionAmount={12}
+  chromaticAberration
+  shadow={false}>
+  <AndroidGlassTab label="Home" />
+  <AndroidGlassTab label="Search" />
+</AndroidGlassBottomTabs>
+```
+
 <img src="https://raw.githubusercontent.com/kagantemizkan/expo-android-glass-view/5a563ac/.github/assets/tabbar.gif" alt="AndroidGlassBottomTabs" width="480" />
 
 ```tsx
@@ -182,14 +219,17 @@ pressed.
 </AndroidGlassBottomTabs>
 ```
 
-| Prop                | Type                           | Default           | Description                                                                                 |
-| ------------------- | ------------------------------ | ----------------- | ------------------------------------------------------------------------------------------- |
-| `selectedIndex`     | `number`                       | `0`               |                                                                                             |
-| `onTabSelected`     | `(index: number) => void`      | —                 | Called on tap, or when the droplet is dropped on a tab.                                     |
-| `minimized`         | `boolean`                      | `false`           | Minimized look: shorter and narrower, labels faded out. Animated. See _Minimize on scroll_. |
-| `onMinimizedChange` | `(minimized: boolean) => void` | —                 | Called with `false` when the user expands the minimized bar by touching it.                 |
-| `accentColor`       | `ColorValue`                   | system blue       | Colour of the selected tab's content.                                                       |
-| `containerColor`    | `ColorValue`                   | translucent white | Colour of the glass bar.                                                                    |
+| Prop                | Type                           | Default                   | Description                                                                                 |
+| ------------------- | ------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------- |
+| `theme`             | `"light" \| "dark"`            | `"light"`                 | Glass appearance, independent of the system.                                                |
+| `opacity`           | `number`                       | `style.opacity`, else `1` | Whole bar opacity, including icons and labels; clamped to 0–1.                              |
+| `cornerRadius`      | `number`                       | capsule                   | Explicit bar radius in dp.                                                                  |
+| `selectedIndex`     | `number`                       | `0`                       |                                                                                             |
+| `onTabSelected`     | `(index: number) => void`      | —                         | Called on tap, or when the droplet is dropped on a tab.                                     |
+| `minimized`         | `boolean`                      | `false`                   | Minimized look: shorter and narrower, labels faded out. Animated. See _Minimize on scroll_. |
+| `onMinimizedChange` | `(minimized: boolean) => void` | —                         | Called with `false` when the user expands the minimized bar by touching it.                 |
+| `accentColor`       | `ColorValue`                   | system blue               | Colour of the selected tab's content.                                                       |
+| `containerColor`    | `ColorValue`                   | theme material            | Colour of the glass bar.                                                                    |
 
 Each child is one tab (equal widths). `AndroidGlassTab` is an icon over a 12 sp label, but any
 view works — as with buttons, the tabs are drawn inside the glass, so keep them decorative. The
@@ -299,10 +339,130 @@ export default function TabLayout() {
 The bar floats over the screens, so give their content some bottom padding. With React
 Navigation, the same component works as `createBottomTabNavigator`'s `tabBar`.
 
+## `AndroidGlassMenu`
+
+<img src="https://raw.githubusercontent.com/kagantemizkan/expo-android-glass-view/main/.github/assets/menu.gif" alt="AndroidGlassMenu: opening, row highlight transitions and nested menus in dark mode" width="480" />
+
+An anchored glass action menu with independent position, size and corner motion,
+refracted labels, a selection pill that snaps to rows, checkmarks, separators and
+disabled/destructive actions. The backdrop stays in screen coordinates while the
+surface grows. Its surface stretches and moves toward the finger, then springs
+back on release. The selection pill springs between row-aligned positions and
+adapts to each row's height. It disappears when the finger is over separators,
+headings, disabled rows or the panel's padding.
+The menu renders in the same window as the screen, through a provider above the
+navigator. It does not use React Native `Modal`.
+
+```tsx
+import { useRef, useState } from 'react';
+import { View } from 'react-native';
+import {
+  AndroidGlassButton,
+  AndroidGlassMenu,
+  AndroidGlassMenuProvider,
+} from 'expo-android-glass-view';
+
+// At your application root:
+// <AndroidGlassMenuProvider><YourNavigator /></AndroidGlassMenuProvider>
+
+function SortMenu() {
+  const anchorRef = useRef<View>(null);
+  const [visible, setVisible] = useState(false);
+  const [sort, setSort] = useState('recent');
+  return (
+    <>
+      <View ref={anchorRef} collapsable={false}>
+        <AndroidGlassButton title="Sort" onPress={() => setVisible(true)} />
+      </View>
+      <AndroidGlassMenu
+        visible={visible}
+        anchorRef={anchorRef}
+        items={[
+          { id: 'recent', title: 'Most recent', checked: sort === 'recent' },
+          { id: 'name', title: 'Name', checked: sort === 'name' },
+        ]}
+        onSelect={setSort}
+        onDismiss={() => setVisible(false)}
+      />
+    </>
+  );
+}
+```
+
+`visible`, `anchorRef` and `onDismiss` are required. For native rows, supply `items` and `onSelect`. Set
+`visible` to false in `onDismiss`, which runs on a dismissing selection or when
+outside press / Android Back closes the root menu. `onSelect` receives the chosen item's unique `id`. Each item supports
+`title`, `checked`, `disabled`, `destructive`, and `separator` (before the row).
+
+Optional `width` defaults to 250 dp. `theme` is `light` or `dark` and defaults to
+`light`. Pass safe-area `insets` (`top`, `right`, `bottom`, `left`) if the provider
+covers system bars; omitted edges use 12 dp. Position is measured on opening and
+window-size changes. The default `placement="overlap"` expands over the trigger,
+aligned just beyond its right edge; `placement="below"` opens underneath. Both are
+clamped to the provider bounds and flip above the trigger when needed. Keep the trigger stationary while open.
+
+Items can include `children` (another item array). On Android, a front surface grows
+from the selected row and leaves the parent visible behind it. Its header, a tap
+on the parent, an outside press, or Android Back collapses it. There is no extra
+back row on Android. Selecting a leaf calls `onSelect` with its id. Set
+`keepsMenuPresented` on toggles and repeated actions to keep the menu open while
+updating their checked state. `compact` uses a smaller row and `sectionTitle` adds
+a muted heading. `icon` supports grid, heart, adjustments, photo, video, screenshot,
+album, zoom-in, zoom-out, aspect and people glyphs.
+
+Use `\n` for a two-line title; those rows receive extra height. If hiding the
+trigger during the morph, keep its layout and ref mounted and restore it in
+`onDismissed`, after the closing animation finishes. `sourceIcon="sort"` retains
+the sort glyph during that transition. Decorative View groups inside a glass
+button should use `pointerEvents="none"`. The provider keeps its last native panel
+hidden and non-interactive after closing so its GPU programs stay ready.
+
+Only one menu should be visible per provider. Tall menus reveal rows when dragged
+along their upper/lower edge and support accessibility scrolling with TalkBack.
+Dragging directly from the opening button into the menu is not part of this API. iOS and web use a plain scrollable
+menu with the same selection API. On Android the animation follows system animator
+duration settings.
+
+### Custom React menu content
+
+Pass `children` to replace the native action rows with live React content. `contentHeight`
+sets the panel height in dp (default 240, including 16 dp content padding on each edge); it
+is clamped to the available screen space, and overflowing content scrolls. When children
+are present, `items` are ignored and `onSelect` is not used. Dismiss from a custom control by
+setting `visible` to false; outside press and Android Back also dismiss.
+
+```tsx
+<AndroidGlassMenu
+  visible={open}
+  anchorRef={anchor}
+  theme="dark"
+  contentHeight={300}
+  onDismiss={() => setOpen(false)}>
+  <Text style={{ color: 'white' }}>Custom controls</Text>
+  <Switch value={enabled} onValueChange={setEnabled} />
+  <Pressable onPress={() => setOpen(false)}>
+    <Text style={{ color: 'white' }}>Done</Text>
+  </Pressable>
+</AndroidGlassMenu>
+```
+
+The native glass retains its opening/closing morph; React children follow its scale, position
+and fade, while retaining native touch responders and accessibility. Custom content does not
+use native row snapping or the native label refraction shader. Style child text for the selected
+theme yourself. Components render in the provider's React context, so place any context providers
+needed by custom children above `AndroidGlassMenuProvider`.
+
 ## Colours and dark mode
 
-Component defaults (accent, track and container colours) follow the system dark mode setting,
-like Kyant's samples. Pass the colour props to match your own theme.
+View, Button, Menu and BottomTabs accept optional `theme="light" | "dark"`. Button, Menu and BottomTabs default to `light`. GlassView without a theme keeps its original untinted material; it does not select a theme automatically.
+The material is tuned against the supplied iOS recordings: light has a milky translucent
+colour response, dark retains a subdued charcoal response. View, Button, Menu and the tab
+bar share the resting material; their shapes and interaction animations remain independent.
+Toggle and Slider do not accept a theme prop and are unchanged by the glass appearance setting.
+
+View/Button/BottomTabs effect overrides remain supported and survive theme changes. Removing an
+override restores its default. The themed material uses blur 9 dp, refraction 2 / 3 dp and vibrancy off. Unthemed GlassView uses its original blur 2 dp, refraction 12 / 24 dp and vibrancy on. Removing its theme restores that material, including its original highlight and shadow. Button labels follow the appearance; custom child text colours are yours.
+Fallback platforms use plain theme-aware surfaces.
 
 ## Gestures
 
@@ -321,15 +481,15 @@ are told a native gesture started. Vertical drags still scroll.
 
 ## How it works
 
-In short: every glass view takes a live snapshot of what is drawn behind it, runs it through a
+Every glass view takes a live snapshot of what is drawn behind it, runs it through a
 GPU lens (blur, refraction, vibrancy) and draws the result in its own shape.
 
 ### A Compose layer inside a React Native view
 
 Each glass component is a React Native view (`GlassHostView`) whose first child is a Jetpack
 Compose view drawing Kyant's `drawBackdrop` modifier. Your React children are regular React
-Native views on top of that layer — except in `AndroidGlassButton`, where they are drawn _inside_
-the glass so they stretch and swell with it.
+Native views on top of that layer. Button and BottomTabs content is drawn _inside_ the glass
+so it follows their deformation; custom menu children remain interactive React views.
 
 ### Seeing the React Native screen behind it
 
@@ -393,7 +553,8 @@ that glass view then runs its blur and refraction again on the GPU. Changes else
 screen don't count, because each glass view only captures what can reach it (see _Seeing the
 React Native screen behind it_).
 
-Measured with `adb shell dumpsys gfxinfo` and `atrace` on a release build, on a mid-range phone:
+Earlier baseline measurements with `adb shell dumpsys gfxinfo` and `atrace` on a release build
+(no new 0.1.10 performance benchmark), on a mid-range phone:
 Xiaomi 24117RN76E, MediaTek Helio G99, Android 16, 120 Hz.
 
 | Screen                                                                  | Glass views | Result                                                                  |
@@ -424,6 +585,22 @@ In practice:
 - `SurfaceView`-based content (most video players, camera previews, some maps) is not part of the
   view tree's drawing and shows up empty behind the glass. `TextureView` content works.
 - A React Native `Modal` is a separate window, so glass inside it only sees the modal's content.
+
+### Android overscroll stretch
+
+Repeatedly scrolling past the edge of a list can leave the sampled backdrop shifted inside a
+fixed glass header. This has been reproduced with Android's overscroll stretch effect; the
+header itself stays in place while the image inside the glass drifts.
+
+Set `overScrollMode="never"` on the `ScrollView` or `FlatList` behind the glass to avoid this:
+
+```tsx
+<ScrollView overScrollMode="never">{content}</ScrollView>
+```
+
+This disables Android's edge stretch/glow feedback. Normal scrolling and glass effects,
+including `blurGradient`, continue to work. This is a workaround for the backdrop capture
+interaction, not native support for overscroll stretch.
 
 ## Credits and licenses
 

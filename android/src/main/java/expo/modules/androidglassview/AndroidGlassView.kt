@@ -12,7 +12,7 @@ import expo.modules.kotlin.AppContext
 @SuppressLint("ViewConstructor")
 class AndroidGlassView(context: Context, appContext: AppContext) : GlassHostView(context, appContext) {
 
-  internal val glassState = GlassState()
+  internal val glassState = GlassState().apply { themed = false }
 
   @Composable
   override fun GlassContent() {

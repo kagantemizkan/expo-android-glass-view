@@ -11,7 +11,13 @@ type MinimizedEvent = { nativeEvent: { minimized: boolean } };
 
 type NativeAndroidGlassBottomTabsProps = Omit<
   AndroidGlassBottomTabsProps,
-  'onTabSelected' | 'onMinimizedChange' | 'accentColor' | 'containerColor'
+  | 'onTabSelected'
+  | 'onMinimizedChange'
+  | 'accentColor'
+  | 'containerColor'
+  | 'tintColor'
+  | 'surfaceColor'
+  | 'fallbackColor'
 > & {
   tabsCount: number;
   /** Count of the last selection event handled here (see ControlledProp on the native side). */
@@ -20,6 +26,9 @@ type NativeAndroidGlassBottomTabsProps = Omit<
   onMinimizedChange: (event: MinimizedEvent) => void;
   accentColor?: NativeColor;
   containerColor?: NativeColor;
+  tintColor?: NativeColor;
+  surfaceColor?: NativeColor;
+  fallbackColor?: NativeColor;
 };
 
 const NativeAndroidGlassBottomTabs: React.ComponentType<NativeAndroidGlassBottomTabsProps> =
@@ -32,6 +41,10 @@ export default function AndroidGlassBottomTabs({
   onMinimizedChange,
   accentColor,
   containerColor,
+  tintColor,
+  surfaceColor,
+  fallbackColor,
+  opacity,
   children,
   style,
   ...rest
@@ -50,13 +63,20 @@ export default function AndroidGlassBottomTabs({
     <NativeAndroidGlassBottomTabs
       accessibilityRole="tablist"
       {...rest}
-      style={[styles.bar, style]}
+      style={[
+        styles.bar,
+        style,
+        opacity !== undefined && { opacity: Math.max(0, Math.min(1, opacity)) },
+      ]}
       selectedIndex={selected}
       tabsCount={tabs.length}
       mostRecentEventCount={eventCount}
       minimized={minimized ?? shared?.minimized ?? false}
       accentColor={toNativeColor(accentColor)}
       containerColor={toNativeColor(containerColor)}
+      tintColor={toNativeColor(tintColor)}
+      surfaceColor={toNativeColor(surfaceColor)}
+      fallbackColor={toNativeColor(fallbackColor)}
       onTabSelected={(event) => {
         const { index, eventCount: count } = event.nativeEvent;
         setEventCount((current) => Math.max(current, count));

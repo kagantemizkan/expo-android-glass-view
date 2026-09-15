@@ -1,6 +1,6 @@
 {
   "name": "expo-android-glass-view",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Liquid Glass views, buttons, sliders and toggles for React Native on Android (Jetpack Compose, powered by Kyant0/AndroidLiquidGlass)",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -11,7 +11,8 @@
     "test": "node internal/module_scripts/test.js",
     "prepare": "node internal/module_scripts/prepare.js",
     "open:ios": "node internal/module_scripts/open-ios.js",
-    "open:android": "node internal/module_scripts/open-android.js"
+    "open:android": "node internal/module_scripts/open-android.js",
+    "test:unit": "jest --config internal/jest-unit.config.cjs --runInBand"
   },
   "keywords": [
     "react-native",

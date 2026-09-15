@@ -1,22 +1,30 @@
 import type { ColorValue, ViewProps } from 'react-native';
 
+export type GlassTheme = 'light' | 'dark';
+
 export type AndroidGlassViewProps = ViewProps & {
+  /** Optional glass appearance. Omit to keep the original untinted glass; no automatic light/dark theme. */
+  theme?: GlassTheme;
   /**
    * Corner radius of the glass shape, in dp. Falls back to `style.borderRadius`, then 24.
    * Use a large value (e.g. 999) for a capsule.
    */
   cornerRadius?: number;
-  /** Backdrop blur radius in dp. Default 2. `0` disables the blur. */
+  /** Backdrop blur radius in dp. Default 2 without a theme, 9 with a theme. `0` disables the blur. */
   blurRadius?: number;
-  /** Width of the refracting rim in dp. Default 12. `0` disables refraction. */
+  /** Android 13+: linearly reduce blur from blurRadius at the top to zero at the bottom.
+   * Omit for uniform blur. Android 12 uses uniform blur; older Android/iOS/web use plain fallbacks.
+   */
+  blurGradient?: 'top-to-bottom';
+  /** Width of the refracting rim in dp. Default 12 without a theme, 2 with a theme. `0` disables refraction. */
   refractionHeight?: number;
-  /** How far content is bent at the rim, in dp. Default 24. */
+  /** How far content is bent at the rim, in dp. Default 24 without a theme, 3 with a theme. */
   refractionAmount?: number;
   /** Split the refraction per colour channel for a prism fringe. Default false. */
   chromaticAberration?: boolean;
   /** Stronger, depth-like bending towards the rim. Default false. */
   depthEffect?: boolean;
-  /** Boost the saturation of what is behind the glass. Default true. */
+  /** Boost backdrop saturation. Default true without a theme, false with a theme. */
   vibrancy?: boolean;
   /** Specular highlight along the rim. Default true. */
   highlight?: boolean;

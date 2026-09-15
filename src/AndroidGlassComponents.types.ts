@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ColorValue, StyleProp, TextStyle, ViewProps } from 'react-native';
 
-import type { AndroidGlassViewProps } from './AndroidGlassView.types';
+import type { AndroidGlassViewProps, GlassTheme } from './AndroidGlassView.types';
 
 /**
  * Accepts every `AndroidGlassView` glass prop. `cornerRadius` defaults to a capsule.
@@ -45,7 +45,14 @@ export type AndroidGlassSliderProps = ViewProps & {
   trackColor?: ColorValue;
 };
 
-export type AndroidGlassBottomTabsProps = ViewProps & {
+/** Glass effect props affect the bar surface; the selection droplet keeps its own optics. */
+export type AndroidGlassBottomTabsProps = AndroidGlassViewProps & {
+  /** Whole bar opacity including content, 0–1. Overrides style.opacity when supplied. */
+  opacity?: number;
+  /** Bar corner radius in dp. Omit for the original capsule shape. */
+  cornerRadius?: number;
+  /** Shared glass material. Default light, independent of system appearance. */
+  theme?: GlassTheme;
   /** Index of the selected tab. */
   selectedIndex?: number;
   /** Called when the user taps a tab or drops the droplet on one. */

@@ -28,6 +28,8 @@ import expo.modules.kotlin.viewevent.EventDispatcher
 class AndroidGlassBottomTabs(context: Context, appContext: AppContext) : GlassHostView(context, appContext) {
 
   override val drawsReactChildrenInCompose: Boolean = true
+  internal val glassState = GlassState().apply { cornerRadius = 999f }
+
   override val claimsHorizontalDrags: Boolean = true
 
   internal var selectedIndex by mutableIntStateOf(0)
@@ -84,6 +86,7 @@ class AndroidGlassBottomTabs(context: Context, appContext: AppContext) : GlassHo
         }
       },
       backdrop = backdrop,
+        state = glassState,
       tabsCount = tabsCount.coerceAtLeast(1),
       drawTabs = { origin, frame, tint, scale ->
         // Reading the generation subscribes this draw to changes of the React children.
