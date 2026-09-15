@@ -124,7 +124,10 @@ export function AndroidGlassMenuProvider({ children }: { children: ReactNode }) 
   return (
     <Context.Provider value={portal}>
       <View ref={root} collapsable={false} style={styles.root}>
+        {/* Keep the native content tree stable when accessibility switches for the menu.
+            Flattening this wrapper would invalidate the RenderNodes cached by glass backdrops. */}
         <View
+          collapsable={false}
           style={styles.root}
           importantForAccessibility={entry?.visible ? 'no-hide-descendants' : 'auto'}
           accessibilityElementsHidden={!!entry?.visible}>

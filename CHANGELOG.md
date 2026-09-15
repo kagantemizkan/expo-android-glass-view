@@ -32,6 +32,8 @@
 
 ### Fixed
 
+- Opening or closing a menu no longer rebuilds the provider's native content wrapper, which
+  could leave the menu and tab bar sampling an empty backdrop until the next scroll.
 - Dark menu appearance now applies to the native background as well as its text.
 - Menu highlights stay on selectable rows instead of appearing in gaps or panel padding.
 - Touches and scrolling inside custom React menu content no longer dismiss the panel.
