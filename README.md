@@ -39,8 +39,9 @@ Glass components sample what is drawn behind them in the same window, keeping up
 scrolling lists, animations and layout changes. View, Button, Toggle, Slider and BottomTabs
 need no provider. Menus require `AndroidGlassMenuProvider` above the navigator.
 
-Version **0.1.10** adds anchored menus with custom React content, optional light/dark materials,
-and configurable tab bar glass effects.
+Version **0.1.11** adds React icons to standard menu rows and configurable Android menu shadows.
+Version 0.1.10 introduced anchored menus, custom React menu content, light/dark materials and
+configurable tab bar glass effects.
 See [CHANGELOG.md](./CHANGELOG.md) for the release notes.
 
 ## Platforms
@@ -64,8 +65,8 @@ npx expo run:android
 
 For bare React Native apps, [install Expo Modules](https://docs.expo.dev/bare/installing-expo-modules/) first.
 
-When upgrading to 0.1.10, rebuild your native app or development client. The new menu and
-BottomTabs props require the matching native binary; updating JavaScript alone is insufficient.
+When upgrading to 0.1.11, rebuild your native app or development client. Custom menu icons and
+menu shadow controls require the matching native binary; updating JavaScript alone is insufficient.
 
 ## `AndroidGlassView`
 
@@ -395,8 +396,11 @@ outside press / Android Back closes the root menu. `onSelect` receives the chose
 `title`, `checked`, `disabled`, `destructive`, and `separator` (before the row).
 
 Optional `width` defaults to 250 dp. `theme` is `light` or `dark` and defaults to
-`light`. Pass safe-area `insets` (`top`, `right`, `bottom`, `left`) if the provider
-covers system bars; omitted edges use 12 dp. Position is measured on opening and
+`light`. On Android, `shadow={false}` removes the drop shadow; `shadowOpacity`
+sets its opacity from 0 to 1 (default 0.12 in light, 0.16 in dark). Both options
+apply to nested surfaces and custom React content. Pass safe-area `insets`
+(`top`, `right`, `bottom`, `left`) if the provider covers system bars; omitted edges
+use 12 dp. Position is measured on opening and
 window-size changes. The default `placement="overlap"` expands over the trigger,
 aligned just beyond its right edge; `placement="below"` opens underneath. Both are
 clamped to the provider bounds and flip above the trigger when needed. Keep the trigger stationary while open.
@@ -409,6 +413,20 @@ back row on Android. Selecting a leaf calls `onSelect` with its id. Set
 updating their checked state. `compact` uses a smaller row and `sectionTitle` adds
 a muted heading. `icon` supports grid, heart, adjustments, photo, video, screenshot,
 album, zoom-in, zoom-out, aspect and people glyphs.
+For a custom icon, pass a React element instead of a glyph name. It stays inside the
+native row and follows the menu's content animation, including in submenus:
+
+```tsx
+import Ionicons from '@expo/vector-icons/Ionicons';
+
+const items = [
+  { id: 'share', title: 'Share', icon: <Ionicons name="share-outline" size={20} color="#202124" /> },
+];
+```
+
+Custom icons are decorative and use the size and colour you give them; use a light
+colour for dark menus. The icon slot is 20 × 20 dp. Native row selection, scrolling,
+and submenu behaviour are unchanged. This feature requires a new Android build.
 
 Use `\n` for a two-line title; those rows receive extra height. If hiding the
 trigger during the morph, keep its layout and ref mounted and restore it in
@@ -554,7 +572,7 @@ screen don't count, because each glass view only captures what can reach it (see
 React Native screen behind it_).
 
 Earlier baseline measurements with `adb shell dumpsys gfxinfo` and `atrace` on a release build
-(no new 0.1.10 performance benchmark), on a mid-range phone:
+(no new 0.1.11 performance benchmark), on a mid-range phone:
 Xiaomi 24117RN76E, MediaTek Helio G99, Android 16, 120 Hz.
 
 | Screen                                                                  | Glass views | Result                                                                  |

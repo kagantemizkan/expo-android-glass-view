@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.11 — 2026-09-21
+
+### Added
+
+- `AndroidGlassMenu` standard rows now accept a decorative React element as `icon`, such as
+  `<Ionicons />`, alongside the existing native glyph names. Custom icons render inside the
+  glass surface and follow its opening, scrolling and submenu animations without replacing
+  native row selection.
+- `AndroidGlassMenu` now accepts `shadow={false}` to remove its Android drop shadow and
+  `shadowOpacity` (0–1) to set its strength. Both affect the root and nested menu surfaces,
+  including menus with custom React content. The existing light/dark defaults are unchanged.
+
+### Compatibility
+
+- Rebuild the Android app or development client for these native menu capabilities; a JS-only
+  update is not enough. iOS and web continue to use plain menu fallbacks.
+
 ## 0.1.10 — 2026-09-15
 
 ### Added

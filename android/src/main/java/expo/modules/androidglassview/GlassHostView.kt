@@ -186,6 +186,19 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
     }
   }
 
+  /** Draw one React child at the current canvas origin, for inline native content slots. */
+  internal fun drawReactChildInto(canvas: Canvas, index: Int) {
+    val child = getReactChildAt(index) ?: return
+    if (child.visibility != View.VISIBLE) return
+    val save = canvas.save()
+    val matrix = child.matrix
+    if (!matrix.isIdentity) canvas.concat(matrix)
+    val alpha = child.alpha
+    if (alpha < 1f) canvas.saveLayerAlpha(0f, 0f, child.width.toFloat(), child.height.toFloat(), (alpha * 255f).toInt())
+    child.draw(canvas)
+    canvas.restoreToCount(save)
+  }
+
   override fun drawChild(canvas: Canvas, child: View, drawingTime: Long): Boolean {
     if (drawsReactChildrenInCompose && child !== composeView) return false
     return super.drawChild(canvas, child, drawingTime)

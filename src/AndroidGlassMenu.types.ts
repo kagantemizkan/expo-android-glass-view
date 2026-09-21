@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react';
+import type { ReactElement, ReactNode, RefObject } from 'react';
 import type { View } from 'react-native';
 
 export type AndroidGlassMenuItem = {
@@ -7,7 +7,7 @@ export type AndroidGlassMenuItem = {
   title: string;
   /** A nested action list, shown with a trailing chevron. */
   children?: readonly AndroidGlassMenuItem[];
-  /** Native line icon displayed before the title. */
+  /** Native line icon or a decorative React icon displayed before the title. */
   icon?:
     | 'grid'
     | 'heart'
@@ -19,7 +19,8 @@ export type AndroidGlassMenuItem = {
     | 'zoom-in'
     | 'zoom-out'
     | 'aspect'
-    | 'people';
+    | 'people'
+    | ReactElement;
   /** A compact row inside a submenu. */
   compact?: boolean;
   /** Optional muted section heading above this item. */
@@ -56,6 +57,10 @@ export type AndroidGlassMenuProps = {
   placement?: 'overlap' | 'below';
   /** Shared glass material. Default light, independent of the system. */
   theme?: 'light' | 'dark';
+  /** Android drop shadow. Default true. */
+  shadow?: boolean;
+  /** Android shadow opacity, 0–1. Defaults to 0.12 in light and 0.16 in dark. */
+  shadowOpacity?: number;
   /** Padding inside the provider bounds, e.g. safe-area insets. Default 12 on all sides. */
   insets?: { top?: number; right?: number; bottom?: number; left?: number };
 };
@@ -66,6 +71,8 @@ export type GlassMenuPanelProps = {
   items: readonly AndroidGlassMenuItem[];
   expanded: boolean;
   dark: boolean;
+  shadow?: boolean;
+  shadowOpacity?: number;
   originX: number;
   originY: number;
   rowHeight: number;

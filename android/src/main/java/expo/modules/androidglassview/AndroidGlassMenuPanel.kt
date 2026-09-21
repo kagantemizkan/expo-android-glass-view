@@ -47,6 +47,7 @@ import kotlin.math.roundToInt
 internal data class GlassMenuItem(
   val id: String, val title: String, val checked: Boolean = false, val disabled: Boolean = false,
   val destructive: Boolean = false, val separator: Boolean = false, val icon: String = "",
+  val iconViewIndex: Int = -1,
   val compact: Boolean = false, val sectionTitle: String = "", val keepsPresented: Boolean = false,
   val children: List<GlassMenuItem> = emptyList()
 )
@@ -54,9 +55,13 @@ internal data class GlassMenuItem(
 /** All menu motion and navigation stay on the UI thread, within the content's window. */
 @SuppressLint("ViewConstructor")
 class AndroidGlassMenuPanel(context: Context, appContext: AppContext) : GlassHostView(context, appContext) {
+  override val drawsReactChildrenInCompose: Boolean get() = customHeight <= 0f
+
   internal var items by mutableStateOf<List<GlassMenuItem>>(emptyList())
   internal var expanded by mutableStateOf(false)
   internal var dark by mutableStateOf(false)
+  internal var shadowEnabled by mutableStateOf(true)
+  internal var shadowOpacity by mutableStateOf<Float?>(null)
   internal var originX by mutableFloatStateOf(1f)
   internal var originY by mutableFloatStateOf(0f)
   internal var rowHeight by mutableFloatStateOf(48f)
@@ -73,7 +78,7 @@ class AndroidGlassMenuPanel(context: Context, appContext: AppContext) : GlassHos
       val item = array.getJSONObject(index)
       GlassMenuItem(item.optString("id"), item.optString("title"), item.optBoolean("checked"),
         item.optBoolean("disabled"), item.optBoolean("destructive"), item.optBoolean("separator"),
-        item.optString("icon"), item.optBoolean("compact"), item.optString("sectionTitle"),
+        item.optString("icon"), item.optInt("iconViewIndex", -1), item.optBoolean("compact"), item.optString("sectionTitle"),
         item.optBoolean("keepsMenuPresented"), item.optJSONArray("children")?.let(::parse) ?: emptyList())
     }
     items = parse(JSONArray(json))
@@ -199,7 +204,7 @@ class AndroidGlassMenuPanel(context: Context, appContext: AppContext) : GlassHos
         val index = parentRows.indexOfFirst { it.id == id }
         if (index >= 0) {
           val parent = parentRows[index]
-          val header = parent.copy(checked = false, separator = false, sectionTitle = "", icon = "", compact = false)
+          val header = parent.copy(checked = false, separator = false, sectionTitle = "", icon = "", iconViewIndex = -1, compact = false)
           val children = parent.children.mapIndexed { childIndex, item ->
             if (childIndex == 0) item.copy(separator = true) else item
           }
@@ -341,7 +346,11 @@ class AndroidGlassMenuPanel(context: Context, appContext: AppContext) : GlassHos
       }, effects = {
         glassEffects(menuGlass, effectScale, material, press)
       }, highlight = { menuGlass.rim.copy(alpha = menuGlass.rim.alpha + press * .25f) },
-      shadow = { menuGlass.dropShadow },
+      shadow = {
+        if (!shadowEnabled) null else menuGlass.dropShadow.let { base ->
+          shadowOpacity?.let { base.copy(color = base.color.copy(alpha = it)) } ?: base
+        }
+      },
       onDrawSurface = { glassSurface(menuGlass, effectsSupported) }
       )
       .then(scrubbing)
@@ -392,6 +401,11 @@ class AndroidGlassMenuPanel(context: Context, appContext: AppContext) : GlassHos
                 if(item.checked) drawMenuIcon("check",color)
               }
               if(item.icon.isNotEmpty()) Canvas(Modifier.padding(end=14.dp).size(20.dp).clearAndSetSemantics {}) { drawMenuIcon(item.icon,color) }
+              else if(item.iconViewIndex >= 0) Canvas(Modifier.padding(end=14.dp).size(20.dp).clearAndSetSemantics {}) {
+                if (reactChildrenGeneration >= 0) drawReactLayer(Offset.Zero, null) { canvas ->
+                  drawReactChildInto(canvas, item.iconViewIndex)
+                }
+              }
               BasicText(item.title,Modifier.weight(1f),style=TextStyle(color=color,fontSize=16.5f.sp,lineHeight=20.sp,
                 fontWeight=FontWeight((400f + 100f * headerProgress).roundToInt())),maxLines=2,overflow=TextOverflow.Ellipsis)
               if(item.children.isNotEmpty()) Canvas(Modifier.padding(start=12.dp)

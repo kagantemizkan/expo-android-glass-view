@@ -163,6 +163,8 @@ export function AndroidGlassMenuProvider({ children }: { children: ReactNode }) 
                 children={entry.children}
                 expanded={entry.visible}
                 dark={entry.theme === 'dark'}
+                shadow={entry.shadow}
+                shadowOpacity={entry.shadowOpacity}
                 originX={frame.originX}
                 originY={frame.originY}
                 rowHeight={rowHeight}
@@ -223,6 +225,8 @@ export default function AndroidGlassMenu(props: AndroidGlassMenuProps) {
     sourceIcon,
     width,
     theme,
+    shadow,
+    shadowOpacity,
     insets,
     placement,
   } = props;
@@ -240,6 +244,8 @@ export default function AndroidGlassMenu(props: AndroidGlassMenuProps) {
       sourceIcon,
       width,
       theme,
+      shadow,
+      shadowOpacity,
       insets,
       placement,
     });
@@ -257,6 +263,8 @@ export default function AndroidGlassMenu(props: AndroidGlassMenuProps) {
     sourceIcon,
     width,
     theme,
+    shadow,
+    shadowOpacity,
     insets,
     placement,
   ]);

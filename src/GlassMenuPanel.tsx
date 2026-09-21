@@ -79,6 +79,9 @@ export default function GlassMenuPanel({
             <Text style={{ color: dark ? 'white' : '#17191d', width: 24 }}>
               {item.checked ? '✓' : ''}
             </Text>
+            {item.icon != null && typeof item.icon !== 'string' && (
+              <View style={styles.icon}>{item.icon}</View>
+            )}
             <Text
               style={{
                 flex: 1,
@@ -101,5 +104,6 @@ export default function GlassMenuPanel({
 const styles = StyleSheet.create({
   panel: { borderRadius: 32, padding: 8 },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderRadius: 16 },
+  icon: { width: 20, height: 20, marginRight: 14 },
   separator: { height: 1, marginVertical: 5.5, marginHorizontal: 16, backgroundColor: '#88888844' },
 });
