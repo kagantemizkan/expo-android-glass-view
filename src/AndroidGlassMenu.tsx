@@ -159,6 +159,7 @@ export function AndroidGlassMenuProvider({ children }: { children: ReactNode }) 
               <GlassMenuPanel
                 key={entry.id}
                 items={entry.children != null ? EMPTY_ITEMS : (entry.items ?? EMPTY_ITEMS)}
+                isSelectMenu={entry.isSelectMenu ?? false}
                 customHeight={entry.children != null ? frame.height : 0}
                 children={entry.children}
                 expanded={entry.visible}
@@ -219,6 +220,7 @@ export default function AndroidGlassMenu(props: AndroidGlassMenuProps) {
     visible,
     anchorRef,
     items,
+    isSelectMenu,
     onSelect,
     onDismiss,
     onDismissed,
@@ -238,6 +240,7 @@ export default function AndroidGlassMenu(props: AndroidGlassMenuProps) {
       visible,
       anchorRef,
       items,
+      isSelectMenu,
       onSelect,
       onDismiss,
       onDismissed,
@@ -257,6 +260,7 @@ export default function AndroidGlassMenu(props: AndroidGlassMenuProps) {
     visible,
     anchorRef,
     items,
+    isSelectMenu,
     onSelect,
     onDismiss,
     onDismissed,

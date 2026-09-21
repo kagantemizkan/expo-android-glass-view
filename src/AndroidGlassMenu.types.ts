@@ -41,6 +41,8 @@ export type AndroidGlassMenuProps = {
   /** Standard native rows. Ignored when children are supplied. */
   items?: readonly AndroidGlassMenuItem[];
   onSelect?: (id: string) => void;
+  /** Reserve the leading checkmark slot for selectable rows. Defaults to false. */
+  isSelectMenu?: boolean;
   /** Custom React content replacing the native rows. Interactive children stay live. */
   children?: ReactNode;
   /** Custom panel height in dp (including padding). Default 240; clamped to available space. */
@@ -69,6 +71,7 @@ export type GlassMenuPanelProps = {
   children?: ReactNode;
   customHeight?: number;
   items: readonly AndroidGlassMenuItem[];
+  isSelectMenu: boolean;
   expanded: boolean;
   dark: boolean;
   shadow?: boolean;

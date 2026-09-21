@@ -60,6 +60,7 @@ class AndroidGlassMenuPanel(context: Context, appContext: AppContext) : GlassHos
   internal var items by mutableStateOf<List<GlassMenuItem>>(emptyList())
   internal var expanded by mutableStateOf(false)
   internal var dark by mutableStateOf(false)
+  internal var isSelectMenu by mutableStateOf(false)
   internal var shadowEnabled by mutableStateOf(true)
   internal var shadowOpacity by mutableStateOf<Float?>(null)
   internal var originX by mutableFloatStateOf(1f)
@@ -383,7 +384,7 @@ class AndroidGlassMenuPanel(context: Context, appContext: AppContext) : GlassHos
             if (item.separator) Canvas(Modifier.fillMaxWidth().height(12.dp).padding(horizontal=16.dp).graphicsLayer { this.alpha=childAlpha }) {
               drawLine(foreground.copy(alpha=.09f),Offset(0f,size.height/2),Offset(size.width,size.height/2),.6f.dp.toPx())
             }
-            if (item.sectionTitle.isNotEmpty()) Box(Modifier.fillMaxWidth().height((30*density.fontScale).dp).padding(start=34.dp),contentAlignment=Alignment.CenterStart) {
+            if (item.sectionTitle.isNotEmpty()) Box(Modifier.fillMaxWidth().height((30*density.fontScale).dp).padding(start=(if (isSelectMenu) 34 else 12).dp),contentAlignment=Alignment.CenterStart) {
               BasicText(item.sectionTitle,style=TextStyle(color=foreground.copy(alpha=.48f),fontSize=13.sp))
             }
             Row(Modifier.fillMaxWidth().height(heightOf(item).dp).graphicsLayer { this.alpha=childAlpha }
@@ -396,9 +397,11 @@ class AndroidGlassMenuPanel(context: Context, appContext: AppContext) : GlassHos
               val isHeader=item.id==headerId
               val headerProgress = if (isHeader) reveal.coerceIn(0f,1f) else 0f
               // Preserve the source row's leading slot, then collapse it into the header inset.
-              if (isHeader) Spacer(Modifier.width((22f * (1f-headerProgress)).dp))
-              else Canvas(Modifier.width(22.dp).height(20.dp).clearAndSetSemantics {}) {
-                if(item.checked) drawMenuIcon("check",color)
+              if (isSelectMenu) {
+                if (isHeader) Spacer(Modifier.width((22f * (1f-headerProgress)).dp))
+                else Canvas(Modifier.width(22.dp).height(20.dp).clearAndSetSemantics {}) {
+                  if(item.checked) drawMenuIcon("check",color)
+                }
               }
               if(item.icon.isNotEmpty()) Canvas(Modifier.padding(end=14.dp).size(20.dp).clearAndSetSemantics {}) { drawMenuIcon(item.icon,color) }
               else if(item.iconViewIndex >= 0) Canvas(Modifier.padding(end=14.dp).size(20.dp).clearAndSetSemantics {}) {

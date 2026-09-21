@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.0 — 2026-09-21
+
+### Changed
+
+- **Breaking:** `AndroidGlassMenu` defaults to action rows without a leading checkmark slot.
+  Set `isSelectMenu` on selection menus to display `checked` items and reserve the slot,
+  including in nested rows. Rebuild the Android app or development client for this native prop.
+
 ## 0.1.11 — 2026-09-21
 
 ### Added

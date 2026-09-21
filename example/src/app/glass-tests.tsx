@@ -383,6 +383,7 @@ export default function GlassLab() {
         </Text>
       </ScrollView>
       <AndroidGlassMenu
+        isSelectMenu
         visible={visible}
         anchorRef={anchor}
         theme={theme}

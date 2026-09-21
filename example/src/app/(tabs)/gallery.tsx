@@ -549,6 +549,7 @@ export default function Gallery() {
         </View>
       </AndroidGlassView>
       <AndroidGlassMenu
+        isSelectMenu
         visible={visible}
         anchorRef={anchor}
         items={items}

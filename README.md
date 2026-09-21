@@ -39,7 +39,8 @@ Glass components sample what is drawn behind them in the same window, keeping up
 scrolling lists, animations and layout changes. View, Button, Toggle, Slider and BottomTabs
 need no provider. Menus require `AndroidGlassMenuProvider` above the navigator.
 
-Version **0.1.11** adds React icons to standard menu rows and configurable Android menu shadows.
+Version **1.0.0** makes action menus the default: selection checkmarks require `isSelectMenu`.
+Version 0.1.11 added React icons to standard menu rows and configurable Android menu shadows.
 Version 0.1.10 introduced anchored menus, custom React menu content, light/dark materials and
 configurable tab bar glass effects.
 See [CHANGELOG.md](./CHANGELOG.md) for the release notes.
@@ -65,8 +66,8 @@ npx expo run:android
 
 For bare React Native apps, [install Expo Modules](https://docs.expo.dev/bare/installing-expo-modules/) first.
 
-When upgrading to 0.1.11, rebuild your native app or development client. Custom menu icons and
-menu shadow controls require the matching native binary; updating JavaScript alone is insufficient.
+When upgrading to 1.0.0, rebuild your native app or development client. The new menu
+selection layout requires the matching native binary; updating JavaScript alone is insufficient.
 
 ## `AndroidGlassView`
 
@@ -376,6 +377,7 @@ function SortMenu() {
         <AndroidGlassButton title="Sort" onPress={() => setVisible(true)} />
       </View>
       <AndroidGlassMenu
+        isSelectMenu
         visible={visible}
         anchorRef={anchorRef}
         items={[
@@ -394,6 +396,12 @@ function SortMenu() {
 `visible` to false in `onDismiss`, which runs on a dismissing selection or when
 outside press / Android Back closes the root menu. `onSelect` receives the chosen item's unique `id`. Each item supports
 `title`, `checked`, `disabled`, `destructive`, and `separator` (before the row).
+
+`isSelectMenu` defaults to `false`, so action rows do not reserve a checkmark slot before
+their icon or title. Set `isSelectMenu` on selection menus to show checkmarks for `checked`
+items and reserve the leading 22 dp slot on Android (24 dp on iOS and web). Section
+headings follow the same alignment. Rebuild the Android app or development client after
+upgrading to this native prop.
 
 Optional `width` defaults to 250 dp. `theme` is `light` or `dark` and defaults to
 `light`. On Android, `shadow={false}` removes the drop shadow; `shadowOpacity`

@@ -6,6 +6,7 @@ import { menuItemHeight } from './menuLayout';
 
 export default function GlassMenuPanel({
   items: rootItems,
+  isSelectMenu,
   children,
   expanded,
   dark,
@@ -53,7 +54,7 @@ export default function GlassMenuPanel({
             <Text
               style={{
                 color: dark ? '#ffffff88' : '#00000088',
-                paddingLeft: 36,
+                paddingLeft: isSelectMenu ? 36 : 12,
                 height: 30 * fontScale,
                 fontSize: 13,
                 textAlignVertical: 'center',
@@ -76,9 +77,11 @@ export default function GlassMenuPanel({
                 backgroundColor: pressed ? (dark ? '#ffffff22' : '#00000011') : 'transparent',
               },
             ]}>
-            <Text style={{ color: dark ? 'white' : '#17191d', width: 24 }}>
-              {item.checked ? '✓' : ''}
-            </Text>
+            {isSelectMenu && (
+              <Text style={{ color: dark ? 'white' : '#17191d', width: 24 }}>
+                {item.checked ? '✓' : ''}
+              </Text>
+            )}
             {item.icon != null && typeof item.icon !== 'string' && (
               <View style={styles.icon}>{item.icon}</View>
             )}

@@ -16,6 +16,7 @@ const NativePanel: ComponentType<
     itemsJson: string;
     expanded: boolean;
     dark: boolean;
+    isSelectMenu: boolean;
     shadow: boolean;
     shadowOpacity: number | null;
     originX: number;

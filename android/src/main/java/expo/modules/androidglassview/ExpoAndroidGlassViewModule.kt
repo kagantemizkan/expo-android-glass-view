@@ -128,6 +128,7 @@ class ExpoAndroidGlassViewModule : Module() {
       Prop("itemsJson") { view: AndroidGlassMenuPanel, value: String -> view.setItems(value) }
       Prop("expanded") { view: AndroidGlassMenuPanel, value: Boolean -> view.expanded = value }
       Prop("dark") { view: AndroidGlassMenuPanel, value: Boolean -> view.dark = value }
+      Prop("isSelectMenu") { view: AndroidGlassMenuPanel, value: Boolean -> view.isSelectMenu = value }
       Prop("shadow") { view: AndroidGlassMenuPanel, value: Boolean? -> view.shadowEnabled = value ?: true }
       Prop("shadowOpacity") { view: AndroidGlassMenuPanel, value: Float? -> view.shadowOpacity = value?.takeIf { it.isFinite() }?.coerceIn(0f, 1f) }
       Prop("originX") { view: AndroidGlassMenuPanel, value: Float -> view.originX = value.coerceIn(0f, 1f) }

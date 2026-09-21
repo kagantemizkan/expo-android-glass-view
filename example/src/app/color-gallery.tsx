@@ -75,6 +75,7 @@ export default function Gallery() {
         }} />
       </View>
       <AndroidGlassMenu
+        isSelectMenu
         visible={menuVisible}
         anchorRef={menuAnchor}
         sourceIcon="sort"
