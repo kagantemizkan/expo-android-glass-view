@@ -340,10 +340,13 @@ class AndroidGlassMenuPanel(context: Context, appContext: AppContext) : GlassHos
     }
       .requiredSize((if(fixedLayer) layoutWidth else width).coerceAtLeast(1f).dp,
         (if(fixedLayer) layoutHeight else height).coerceAtLeast(1f).dp)
-      .drawBackdrop(backdrop = backdrop, shape = { shape }, clipToShape = false, layerBlock = {
+      // The backdrop node clips itself to the silhouette. The outer layer only
+      // scales and fades: it wraps the drop shadow, so clipping it there cut the
+      // shadow off entirely (shadow/shadowOpacity had no visible effect).
+      .drawBackdrop(backdrop = backdrop, shape = { silhouette }, clipToShape = true, layerBlock = {
         transformOrigin = TransformOrigin(0f,0f)
         this.scaleX = surfaceScaleX; this.scaleY = surfaceScaleY
-        this.alpha = overallAlpha; this.shape = silhouette; clip = true
+        this.alpha = overallAlpha
       }, effects = {
         glassEffects(menuGlass, effectScale, material, press)
       }, highlight = { menuGlass.rim.copy(alpha = menuGlass.rim.alpha + press * .25f) },

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.1 — 2026-10-18
+
+### Fixed
+
+- `AndroidGlassMenu` now draws its drop shadow. The menu's animation layer clipped everything
+  inside it to the menu's shape, including the shadow, so `shadow` and `shadowOpacity` had no
+  visible effect. The glass surface now clips itself and the animation layer only scales and
+  fades, so the shadow shows around the menu and follows its opening animation.
+
+### Compatibility
+
+- Rebuild the Android app or development client; this is a native change. iOS and web are
+  unchanged.
+
 ## 1.0.0 — 2026-09-21
 
 ### Changed
