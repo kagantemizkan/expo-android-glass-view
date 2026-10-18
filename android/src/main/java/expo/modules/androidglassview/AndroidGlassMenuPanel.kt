@@ -36,7 +36,9 @@ import expo.modules.androidglassview.backdrop.effects.lens
 import expo.modules.androidglassview.backdrop.effects.vibrancy
 import expo.modules.androidglassview.backdrop.highlight.Highlight
 import expo.modules.androidglassview.backdrop.isRenderEffectSupported
+import expo.modules.androidglassview.backdrop.internal.ShapeProvider
 import expo.modules.androidglassview.backdrop.shadow.Shadow
+import expo.modules.androidglassview.backdrop.shadow.ShadowElement
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import org.json.JSONArray
@@ -334,27 +336,35 @@ class AndroidGlassMenuPanel(context: Context, appContext: AppContext) : GlassHos
     val localRadius = radius / effectScale
     val shape = RoundedCornerShape(localRadius.coerceAtLeast(0f).dp)
     val silhouette = if (neck > .001f) MenuDropShape(localRadius.dp, neck) else shape
-    Box(Modifier.offset {
+    val placement = Modifier.offset {
       IntOffset(with(density) { (x + width * (1f - stretchX) + dragX * 7f * (1f - verticalPull).coerceAtLeast(0f)).dp.toPx() }.roundToInt(),
         with(density) { (y + dragY * 8f).dp.toPx() }.roundToInt())
     }
       .requiredSize((if(fixedLayer) layoutWidth else width).coerceAtLeast(1f).dp,
         (if(fixedLayer) layoutHeight else height).coerceAtLeast(1f).dp)
-      // The backdrop node clips itself to the silhouette. The outer layer only
-      // scales and fades: it wraps the drop shadow, so clipping it there cut the
-      // shadow off entirely (shadow/shadowOpacity had no visible effect).
-      .drawBackdrop(backdrop = backdrop, shape = { silhouette }, clipToShape = true, layerBlock = {
+    val dropShadow: () -> Shadow? = {
+      if (!shadowEnabled) null else menuGlass.dropShadow.let { base ->
+        shadowOpacity?.let { base.copy(color = base.color.copy(alpha = it)) } ?: base
+      }
+    }
+    // The drop shadow is its own layer behind the glass. The glass layer below is
+    // clipped to the menu silhouette, so a shadow drawn inside it was cut off and
+    // never visible. This layer takes the same position, size, scale and fade, and
+    // ShadowNode masks the shape's interior, so only the outside is shaded.
+    Box(placement.graphicsLayer {
+      transformOrigin = TransformOrigin(0f,0f)
+      this.scaleX = surfaceScaleX; this.scaleY = surfaceScaleY
+      this.alpha = overallAlpha
+    }.then(ShadowElement(ShapeProvider { silhouette }, dropShadow)))
+    Box(placement
+      .drawBackdrop(backdrop = backdrop, shape = { shape }, clipToShape = false, layerBlock = {
         transformOrigin = TransformOrigin(0f,0f)
         this.scaleX = surfaceScaleX; this.scaleY = surfaceScaleY
-        this.alpha = overallAlpha
+        this.alpha = overallAlpha; this.shape = silhouette; clip = true
       }, effects = {
         glassEffects(menuGlass, effectScale, material, press)
       }, highlight = { menuGlass.rim.copy(alpha = menuGlass.rim.alpha + press * .25f) },
-      shadow = {
-        if (!shadowEnabled) null else menuGlass.dropShadow.let { base ->
-          shadowOpacity?.let { base.copy(color = base.color.copy(alpha = it)) } ?: base
-        }
-      },
+      shadow = null,
       onDrawSurface = { glassSurface(menuGlass, effectsSupported) }
       )
       .then(scrubbing)

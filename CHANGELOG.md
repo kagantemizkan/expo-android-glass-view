@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.2 — 2026-10-18
+
+### Fixed
+
+- **1.0.1 crashed on Android when a menu opened or closed** (`UnsupportedOperationException:
+  Only CornerBasedShape is supported in lens effects`): it handed the menu's drop-shaped
+  silhouette to the glass lens, which only accepts rounded rectangles. The glass is drawn
+  exactly as in 1.0.0 again. The drop shadow is now a separate layer behind it, with the
+  same position, size, scale and fade, so it stays visible without touching the glass.
+  Do not use 1.0.1.
+
+### Compatibility
+
+- Rebuild the Android app or development client; this is a native change.
+
 ## 1.0.1 — 2026-10-18
 
 ### Fixed
