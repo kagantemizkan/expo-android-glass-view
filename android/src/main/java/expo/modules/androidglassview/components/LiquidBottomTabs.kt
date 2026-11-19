@@ -141,8 +141,12 @@ internal fun LiquidBottomTabs(
                 initialScale = 1f,
                 pressedScale = 78f / 56f,
                 onDragStarted = { currentOnExpand() },
-                onDragStopped = {
-                    val targetIndex = targetValue.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
+                onDragStopped = { cancelled ->
+                    // A cancelled drag never confirmed its target: slide back to the selected tab
+                    // and emit nothing.
+                    val targetIndex =
+                        if (cancelled) currentIndex
+                        else targetValue.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
                     currentIndex = targetIndex
                     animateToValue(targetIndex.toFloat())
                     animationScope.launch {
@@ -232,7 +236,8 @@ internal fun LiquidBottomTabs(
                 // A tap selects the tab under the finger, exactly like upstream's tab click. Unlike
                 // upstream (where only the droplet can be dragged), a horizontal drag that starts
                 // anywhere on the bar pulls the droplet under the finger and scrubs between tabs;
-                // releasing selects the nearest one.
+                // releasing selects the nearest one. A mostly vertical drag is not a tab gesture
+                // and selects nothing; a cancelled one returns to the selected tab.
                 .pointerInput(dampedDragAnimation, tabsCount, isLtr, geometry) {
                     val lastIndex = (tabsCount - 1).toFloat()
                     // x is in the bar's own coordinates, which follow the minimize animation.
@@ -244,7 +249,11 @@ internal fun LiquidBottomTabs(
                         if (isLtr) slot else lastIndex - slot
                     }
                     var startX = 0f
+                    var startY = 0f
                     var scrubbing = false
+                    // Set once the finger moved past touch slop mostly vertically: the gesture
+                    // is not about the tabs, so it neither scrubs nor selects on release.
+                    var vertical = false
                     var scrubValue = 0f
                     val settle: () -> Unit = {
                         val target = scrubValue.fastRoundToInt().fastCoerceIn(0, tabsCount - 1)
@@ -257,27 +266,40 @@ internal fun LiquidBottomTabs(
                     inspectDragGestures(
                         onDragStart = { down ->
                             startX = down.position.x
+                            startY = down.position.y
                             scrubbing = false
+                            vertical = false
                         },
                         onDragEnd = { up ->
                             if (scrubbing) {
                                 settle()
-                            } else {
+                            } else if (!vertical) {
                                 currentIndex = valueAt(up.position.x).fastRoundToInt()
                                     .fastCoerceIn(0, tabsCount - 1)
                                 currentOnExpand()
                             }
                             scrubbing = false
+                            vertical = false
                         },
                         onDragCancel = {
-                            if (scrubbing) settle()
+                            // Nothing was confirmed by a release: go back to the selected tab
+                            // instead of committing the scrub position.
+                            if (scrubbing) dampedDragAnimation.animateToValue(currentIndex.toFloat())
                             scrubbing = false
+                            vertical = false
                         }
                     ) { change, _ ->
+                        val dx = abs(change.position.x - startX)
+                        val dy = abs(change.position.y - startY)
+                        val slop = viewConfiguration.touchSlop
                         if (scrubbing) {
                             scrubValue = valueAt(change.position.x)
                             dampedDragAnimation.updateValue(scrubValue)
-                        } else if (abs(change.position.x - startX) > viewConfiguration.touchSlop) {
+                        } else if (vertical) {
+                            // Decided: not a tab gesture.
+                        } else if (dy > slop && dy >= dx) {
+                            vertical = true
+                        } else if (dx > slop && dx > dy) {
                             scrubbing = true
                             currentOnExpand()
                             scrubValue = valueAt(change.position.x)

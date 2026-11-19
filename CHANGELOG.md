@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.0.3 — 2026-11-19
+
+### Fixed
+
+- **`AndroidGlassBottomTabs`: a vertical swipe that started on the bar selected the tab under
+  the finger** ([#1](https://github.com/kagantemizkan/expo-android-glass-view/issues/1)). The bar
+  now tells the direction apart once the finger passes touch slop: a mostly horizontal move
+  scrubs between tabs as before, a mostly vertical one is ignored and selects nothing on
+  release.
+- **A cancelled tab gesture committed the tab it was passing over**
+  ([#2](https://github.com/kagantemizkan/expo-android-glass-view/issues/2)). When the system or
+  another touch handler cancels a scrub on the bar or a drag of the droplet, the droplet now
+  slides back to the selected tab and `onTabSelected` is not called.
+
+### Compatibility
+
+- Rebuild the Android app or development client; this is a native change. iOS and web are
+  unchanged.
+
 ## 1.0.2 — 2026-10-18
 
 ### Fixed
