@@ -12,8 +12,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.util.lerp
+import com.facebook.react.uimanager.PointerEvents
+import com.facebook.react.uimanager.ReactPointerEventsView
 import expo.modules.androidglassview.components.LiquidBottomTabs
 import expo.modules.androidglassview.components.TabsFrame
 import expo.modules.kotlin.AppContext
@@ -25,10 +28,15 @@ import expo.modules.kotlin.viewevent.EventDispatcher
  * again in the accent colour under the droplet.
  */
 @SuppressLint("ViewConstructor")
-class AndroidGlassBottomTabs(context: Context, appContext: AppContext) : GlassHostView(context, appContext) {
+class AndroidGlassBottomTabs(context: Context, appContext: AppContext) : GlassHostView(context, appContext), ReactPointerEventsView {
 
   override val drawsReactChildrenInCompose: Boolean = true
+  override val excludesReactChildrenFromTouchTargets: Boolean = true
+  // This host's Compose layer arbitrates capsule touches itself. Let sibling hit testing continue
+  // outside the rendered tab children instead of making the full React view bounds opaque.
+  override val pointerEvents: PointerEvents = PointerEvents.BOX_NONE
   internal val glassState = GlassState().apply { cornerRadius = 999f }
+  private var interactiveBarBounds: CapsuleHitArea? = null
 
   override val claimsHorizontalDrags: Boolean = true
 
@@ -49,6 +57,24 @@ class AndroidGlassBottomTabs(context: Context, appContext: AppContext) : GlassHo
   private val onMinimizedChange by EventDispatcher()
   private val selectedIndexProvider: () -> Int = { selectedIndex }
   private val minimizedProvider: () -> Boolean = { minimized }
+
+  internal fun updateInteractiveBounds(bounds: Rect, horizontalOffset: Float) {
+    val density = resources.displayMetrics.density
+    interactiveBarBounds = CapsuleHitArea(
+      left = bounds.left + horizontalOffset,
+      top = bounds.top,
+      right = bounds.right + horizontalOffset,
+      bottom = bounds.bottom,
+      cornerRadiusPx = glassState.cornerRadius * density,
+      tolerancePx = 2f * density
+    )
+  }
+
+  internal fun containsInteractivePoint(x: Float, y: Float): Boolean =
+    interactiveBarBounds?.contains(x, y) == true
+
+  override fun reactTagForComposeTouch(x: Float, y: Float): Int? =
+    id.takeIf { containsInteractivePoint(x, y) }
 
   // Touching a minimized bar brings it back, like on iOS; JS is told so it can stay in sync.
   private val expand: () -> Unit = {
@@ -98,7 +124,10 @@ class AndroidGlassBottomTabs(context: Context, appContext: AppContext) : GlassHo
       minimized = minimizedProvider,
       onExpand = expand,
       accentColor = accentColor,
-      containerColor = containerColor
+      containerColor = containerColor,
+      onInteractiveBoundsChanged = { bounds, horizontalOffset ->
+        updateInteractiveBounds(bounds, horizontalOffset)
+      }
     )
   }
 

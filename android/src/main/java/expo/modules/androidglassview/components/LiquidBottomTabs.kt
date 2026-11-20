@@ -88,7 +88,8 @@ internal fun LiquidBottomTabs(
     minimized: () -> Boolean = { false },
     onExpand: () -> Unit = {},
     accentColor: Color? = null,
-    containerColor: Color? = null
+    containerColor: Color? = null,
+    onInteractiveBoundsChanged: (Rect, Float) -> Unit = { _, _ -> }
 ) {
     val isLightTheme = !state.dark
     val effectsSupported = isRenderEffectSupported()
@@ -202,7 +203,11 @@ internal fun LiquidBottomTabs(
         // The bar: glass + the tab content.
         Box(
             Modifier
-                .placeAt { geometry.barBounds(minimizeAnimation.value) }
+                .placeAt {
+                    val bounds = geometry.barBounds(minimizeAnimation.value)
+                    onInteractiveBoundsChanged(bounds, panelOffset)
+                    bounds
+                }
                 .graphicsLayer {
                     translationX = panelOffset
                 }

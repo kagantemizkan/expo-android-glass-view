@@ -31,6 +31,7 @@ android {
 }
 
 dependencies {
+  testImplementation 'junit:junit:4.13.2'
   // NativeGestureUtil (claiming drags from scrolling parents). Version comes from the app.
   implementation 'com.facebook.react:react-android'
   // Same Compose version as @expo/ui for this Expo SDK, so apps using both resolve one runtime.
