@@ -10,7 +10,9 @@ import android.graphics.Rect
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewGroup
 import android.view.ViewTreeObserver
+import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -28,13 +30,17 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.facebook.react.uimanager.PointerEvents
+import com.facebook.react.uimanager.ReactCompoundView
+import com.facebook.react.uimanager.ReactPointerEventsView
 import com.facebook.react.uimanager.events.NativeGestureUtil
+import com.facebook.react.views.view.ReactViewGroup
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.views.ExpoView
 import kotlin.math.abs
 
 /**
- * Base class of every glass view: a React Native view whose first child is a [ComposeView]
+ * Base class of every glass view: a React Native view whose first child is a Compose layer
  * rendering Kyant's liquid glass, with the React Native screen behind it as the backdrop.
  *
  * React children come after the Compose layer. React Native positions them itself, so this view
@@ -57,8 +63,14 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
    */
   protected open val drawsReactChildrenInCompose: Boolean = false
 
+  /** When true, Compose owns interaction and React children are only drawn as decoration. */
+  protected open val excludesReactChildrenFromTouchTargets: Boolean = false
+
   /** When true, a horizontal drag that starts on this view is claimed from scrolling parents. */
   protected open val claimsHorizontalDrags: Boolean = false
+
+  /** Maps touches inside a Compose-owned shape to this React node during RN hit testing. */
+  protected open fun reactTagForComposeTouch(x: Float, y: Float): Int? = null
 
   /** Bumped whenever the React children may look different; read it while drawing them. */
   internal var reactChildrenGeneration by mutableIntStateOf(0)
@@ -67,7 +79,26 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   // Not named `Content`: inside `apply`, that would resolve to ComposeView.Content(), which
   // invokes this very lambda again (infinite recursion).
   private val composeView = ComposeView(context).apply {
+    clipChildren = false
     setContent { GlassContent() }
+  }
+  private val composeContentLayer = GlassComposeContentLayer(context).apply {
+    clipChildren = false
+    addView(
+      composeView,
+      FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+    )
+  }
+  private val composeLayer = GlassComposeLayer(
+    context = context,
+    usesCapsuleHitTesting = this is AndroidGlassBottomTabs,
+    touchTargetTagAt = { x, y -> reactTagForComposeTouch(x, y) }
+  ).apply {
+    clipChildren = false
+    addView(
+      composeContentLayer,
+      FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+    )
   }
 
   private val lastLocation = intArrayOf(Int.MIN_VALUE, Int.MIN_VALUE)
@@ -81,6 +112,7 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   private var downX = 0f
   private var downY = 0f
   private var dragClaimed = false
+  private var tabBarTouchAccepted = false
 
   // Re-sample when the glass moves on screen (layout, an ancestor scrolling, transforms).
   private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
@@ -118,8 +150,7 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   init {
     clipChildren = false
     clipToPadding = false
-    composeView.clipChildren = false
-    super.addView(composeView, 0, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    super.addView(composeLayer, 0, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     // The Compose layer is not sized while it is detached (see onMeasure); size it on attach.
     // Listeners run after the view's own onAttachedToWindow, so it is attached by then.
     composeView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
@@ -143,7 +174,20 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   internal fun getReactChildAt(index: Int): View? = getChildAt(index + 1)
 
   internal fun addReactChild(child: View, index: Int) {
+    if (excludesReactChildrenFromTouchTargets) child.excludeFromTouchTargets()
     addView(child, index + 1)
+  }
+
+  private fun View.excludeFromTouchTargets() {
+    if (this is ReactViewGroup) {
+      pointerEvents = PointerEvents.NONE
+      return
+    }
+
+    isEnabled = false
+    if (this is ViewGroup) {
+      for (index in 0 until childCount) getChildAt(index).excludeFromTouchTargets()
+    }
   }
 
   internal fun removeReactChildAt(index: Int) {
@@ -156,12 +200,12 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
 
   override fun onViewAdded(child: View?) {
     super.onViewAdded(child)
-    if (child !== composeView) reactChildrenGeneration++
+    if (child !== composeLayer) reactChildrenGeneration++
   }
 
   override fun onViewRemoved(child: View?) {
     super.onViewRemoved(child)
-    if (child !== composeView) reactChildrenGeneration++
+    if (child !== composeLayer) reactChildrenGeneration++
   }
 
   /**
@@ -200,14 +244,14 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   }
 
   override fun drawChild(canvas: Canvas, child: View, drawingTime: Long): Boolean {
-    if (drawsReactChildrenInCompose && child !== composeView) return false
+    if (drawsReactChildrenInCompose && child !== composeLayer) return false
     return super.drawChild(canvas, child, drawingTime)
   }
 
   override fun onDescendantInvalidated(child: View, target: View) {
     super.onDescendantInvalidated(child, target)
     // React children drawn by Compose are not redrawn by the view system; tell Compose instead.
-    if (drawsReactChildrenInCompose && child !== composeView) reactChildrenGeneration++
+    if (drawsReactChildrenInCompose && child !== composeLayer) reactChildrenGeneration++
   }
 
   // endregion
@@ -224,7 +268,7 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
     // screen, a tab opened for the first time) or has detached — so skip the Compose layer until
     // it is attached. The attach listener in init sizes it then.
     if (!composeView.isAttachedToWindow) return
-    composeView.measure(
+    composeLayer.measure(
       MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
       MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
     )
@@ -233,16 +277,16 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
     // React Native lays out the React children; only the glass layer is ours.
     if (!composeView.isAttachedToWindow) return
-    composeView.layout(0, 0, right - left, bottom - top)
+    composeLayer.layout(0, 0, right - left, bottom - top)
   }
 
   /** Sizes the Compose layer to this view outside a layout pass (see [onMeasure]). */
   private fun layoutComposeLayer() {
-    composeView.measure(
+    composeLayer.measure(
       MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
       MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
     )
-    composeView.layout(0, 0, width, height)
+    composeLayer.layout(0, 0, width, height)
   }
 
   override fun requestLayout() {
@@ -263,6 +307,28 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   // region Touch
 
   override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+    val bottomTabs = this as? AndroidGlassBottomTabs
+    if (bottomTabs != null) {
+      if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+        tabBarTouchAccepted = bottomTabs.containsInteractivePoint(event.x, event.y)
+        if (!tabBarTouchAccepted) return false
+        parent?.requestDisallowInterceptTouchEvent(true)
+        NativeGestureUtil.notifyNativeGestureStarted(this, event)
+      } else if (!tabBarTouchAccepted) {
+        return false
+      }
+
+      // The Compose recognizer still classifies vertical movement separately from tab scrubbing.
+      trackHorizontalDrag(event, notifyGestureEvents = false)
+      val handled = super.dispatchTouchEvent(event)
+      val keepTouchSequence = tabBarTouchAccepted
+      if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+        NativeGestureUtil.notifyNativeGestureEnded(this, event)
+        tabBarTouchAccepted = false
+      }
+      return handled || keepTouchSequence
+    }
+
     if (claimsHorizontalDrags) trackHorizontalDrag(event)
     return super.dispatchTouchEvent(event)
   }
@@ -271,7 +337,7 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
    * Once a drag on this view turns out to be horizontal, stop scrolling parents from stealing it
    * and tell React Native's JS responder system that a native gesture took over.
    */
-  private fun trackHorizontalDrag(event: MotionEvent) {
+  private fun trackHorizontalDrag(event: MotionEvent, notifyGestureEvents: Boolean = true) {
     when (event.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
         downX = event.x
@@ -284,11 +350,11 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
         if (dx > touchSlop && dx > dy) {
           dragClaimed = true
           parent?.requestDisallowInterceptTouchEvent(true)
-          NativeGestureUtil.notifyNativeGestureStarted(this, event)
+          if (notifyGestureEvents) NativeGestureUtil.notifyNativeGestureStarted(this, event)
         }
       }
       MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-        if (dragClaimed) NativeGestureUtil.notifyNativeGestureEnded(this, event)
+        if (dragClaimed && notifyGestureEvents) NativeGestureUtil.notifyNativeGestureEnded(this, event)
         dragClaimed = false
       }
     }
@@ -337,6 +403,24 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   }
 
   // endregion
+}
+
+/** React Native hit proxy for Compose-owned content inside the rendered capsule. */
+private class GlassComposeLayer(
+  context: Context,
+  private val usesCapsuleHitTesting: Boolean,
+  private val touchTargetTagAt: (Float, Float) -> Int?
+) : FrameLayout(context), ReactPointerEventsView, ReactCompoundView {
+  override val pointerEvents: PointerEvents =
+    if (usesCapsuleHitTesting) PointerEvents.BOX_NONE else PointerEvents.NONE
+
+  override fun reactTagForTouch(touchX: Float, touchY: Float): Int =
+    touchTargetTagAt(touchX, touchY) ?: id
+}
+
+/** Excludes Compose's implementation views from RN's hit-target search. */
+private class GlassComposeContentLayer(context: Context) : FrameLayout(context), ReactPointerEventsView {
+  override val pointerEvents: PointerEvents = PointerEvents.NONE
 }
 
 private val tintPaint = Paint()
