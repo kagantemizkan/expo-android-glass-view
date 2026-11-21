@@ -1,5 +1,54 @@
 # Changelog
 
+## 2.0.0 — 2026-11-21
+
+A rewrite. The glass no longer runs on Jetpack Compose: it is an Android `RenderEffect` with an
+AGSL liquid glass shader, tuned to match iOS 26 Liquid Glass.
+
+### Added
+
+- `AndroidGlassView` with `glassEffectStyle` (`regular`, `clear`) and `theme` (`light`,
+  `dark`), fitted to `UIGlassEffect` pixels over the same backdrops. Taller glass is frosted
+  more, like on iOS. `interactive` and `onPress` make it a pressable glass.
+- `AndroidGlassTabs`: a glass tab bar with a droplet you can tap, drag or scrub.
+- `GlassBackdropSource` and the `backdropSource` prop: what the glass shows below Android 17 QPR
+  (SDK 37.2). On 37.2 and newer, the platform's `setBackdropRenderEffect` is used and no source
+  is needed.
+- `getBackdropInfo()`: whether the platform backdrop API is available.
+- `AndroidGlassToggle` and `AndroidGlassSlider` rebuilt on the same glass; the pressed thumbs bend
+  the backdrop.
+
+### Removed
+
+- **Breaking:** `AndroidGlassButton` (use `AndroidGlassView` with `interactive`),
+  `AndroidGlassBottomTabs` and `AndroidGlassTab` (use `AndroidGlassTabs`), `AndroidGlassMenu`
+  and `AndroidGlassMenuProvider`, `MinimizeOnScrollProvider` and its hooks.
+- **Breaking:** the 1.x look props (`blurGradient`, `refractionHeight`, `refractionAmount`,
+  `chromaticAberration`, `depthEffect`, `vibrancy`, `highlight`, `shadow`, `surfaceColor`).
+  Use `glassEffectStyle`, `refraction`, `blurRadius` and `tintColor`.
+- The Jetpack Compose dependency.
+
+### Performance
+
+- Nothing redraws while nothing moves.
+- Frosted glass blurs a quarter-size copy of its backdrop, and the shader takes one sample in
+  the flat interior of the glass. On a Redmi Note 14, eight fast flings over the example
+  showcase dropped 81–187 frames, against 860 with 1.0.3.
+- A slider dragged quickly no longer drops frames: shaders are compiled once.
+
+### Fixed
+
+- The pressed tab droplet no longer shows a frosted box around it.
+- A controlled slider no longer jumps back to an older value after the finger lifts.
+
+### Compatibility
+
+- The glass needs Android 13 (API 33) or newer. On Android 12 and older it shows
+  `fallbackColor` (1.x blurred on Android 12).
+- Below SDK 37.2, wrap the content behind the glass in `GlassBackdropSource` and set
+  `backdropSource`; without it the glass shows `fallbackColor`. See the README's migration table.
+- Rebuild the Android app or development client; this is a native change.
+
 ## 1.0.3 — 2026-11-19
 
 ### Fixed

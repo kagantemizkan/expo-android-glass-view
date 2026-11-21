@@ -307,7 +307,7 @@ class AndroidGlassTabs(context: Context, appContext: AppContext) : AndroidGlassV
     // The droplet: dark capsule at rest, glass lens while pressed. On the capture path its lens
     // bends this bar's processed backdrop and the accent copy (what lies under it here).
     val under: ((Canvas) -> Unit)? =
-      if (!BackdropApi.hasRenderNodeSetter && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      if (!BackdropApi.hasRenderNodeSetter && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         { c ->
           drawProcessedBackdrop(c)
           drawAccentCopy(c, cx, cy, progress)

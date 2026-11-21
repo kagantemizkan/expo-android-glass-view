@@ -131,7 +131,7 @@ class AndroidGlassToggle(context: Context, appContext: AppContext) : ExpoView(co
 
   /** Capture path: what the pressed thumb's lens bends (the source behind, then the track). */
   private fun underThumb(): ((Canvas) -> Unit)? =
-    if (BackdropApi.isSupported || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+    if (BackdropApi.isSupported || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
       null
     } else {
       { c ->

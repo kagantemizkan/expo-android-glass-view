@@ -164,7 +164,7 @@ internal class SourceBackdrop(
 
   /** The capture path applies: no platform backdrop, RenderEffect available, a usable source. */
   val isActive: Boolean
-    get() = !BackdropApi.isSupported && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && source != null
+    get() = !BackdropApi.isSupported && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && source != null
 
   /** Where the view's layout box is in the source (the view's own transform excluded). */
   private fun offset(source: View): Pair<Int, Int> {

@@ -29,7 +29,7 @@ export type AndroidGlassViewProps = ViewProps & {
    */
   tintColor?: ColorValue;
   /**
-   * Shown instead of the glass where there is no backdrop to show: below Android 12, or below
+   * Shown instead of the glass where there is no backdrop to show: below Android 13, or below
    * Android 17 QPR (SDK 37.2) without a `backdropSource`. Default from `theme`.
    */
   fallbackColor?: ColorValue;

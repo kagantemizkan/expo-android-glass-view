@@ -9,6 +9,7 @@ import android.graphics.Path
 import android.graphics.RenderEffect
 import android.graphics.RenderNode
 import android.graphics.Shader
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.util.Log
 import android.view.MotionEvent
@@ -32,12 +33,12 @@ import kotlin.math.tanh
  * (blur, liquid glass, …) on what is behind it, in one of three ways ([BackdropMode]):
  *
  * - `platform` (37.2+): `setBackdropRenderEffect`; the platform supplies the backdrop.
- * - `capture` (API 31–37.1): the named [GlassBackdropSource] (`backdropSource`) supplies it. The
+ * - `capture` (API 33–37.1): the named [GlassBackdropSource] (`backdropSource`) supplies it. The
  *   glass draws the source's capture node, moved so the source lines up with the screen and
  *   undoing the glass's own transform (so a pressed, swelling glass doesn't drag its backdrop
  *   along), into a node of its own that carries the effect. The node is larger than the glass by a
  *   sampling margin when the effect blurs, so the blur reads real pixels at the edges.
- * - `flat`: no backdrop (no source, the glass is inside its source, or below API 31); only the
+ * - `flat`: no backdrop (no source, the glass is inside its source, or below API 33); only the
  *   tint shows.
  *
  * Every applied configuration is reported through `onBackdropStatus`, so a test case can show
@@ -142,6 +143,11 @@ open class AndroidGlassView(context: Context, appContext: AppContext) : ExpoView
   private var blurScale = 1
   /** The capture effects are built (captureEffect may stay null: a plain blur has no shader). */
   private var captureReady = false
+  /**
+   * The surface tint, drawn over the backdrop where no shader mixes it in (`refraction` off); 0 when
+   * the shader does it.
+   */
+  private var plainTint = 0
   private val clipPath = Path()
 
   init {
@@ -158,13 +164,17 @@ open class AndroidGlassView(context: Context, appContext: AppContext) : ExpoView
     // Flat (no backdrop here): the fallback colour stands in for the glass.
     // The tint is part of the glass shader; as a background it only stands in where there is no
     // shader (effect "none") and in the lab's effects.
-    setBackgroundColor(
-      when {
-        mode == BackdropMode.FLAT && effect != "none" -> fallbackColor ?: theme.fallback
-        labEffect != null || effect == "none" -> tintColor ?: 0
-        else -> 0
-      }
-    )
+    val surface = when {
+      mode == BackdropMode.FLAT && effect != "none" -> fallbackColor ?: theme.fallback
+      labEffect != null || effect == "none" -> tintColor ?: 0
+      else -> 0
+    }
+    // Rounded like the glass: a view that does not clip to its outline (the tab bar, whose
+    // droplet swells past it) would otherwise show a square surface.
+    background = if (surface == 0) null else GradientDrawable().apply {
+      setColor(surface)
+      cornerRadius = this@AndroidGlassView.cornerRadius * density
+    }
     // iOS draws a soft shadow under regular glass.
     elevation = if (labEffect == null && glassEffectStyle == GlassEffectStyle.REGULAR) 6f * density else 0f
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -220,7 +230,9 @@ open class AndroidGlassView(context: Context, appContext: AppContext) : ExpoView
   internal val mode: BackdropMode
     get() = when {
       BackdropApi.isSupported -> BackdropMode.PLATFORM
-      Build.VERSION.SDK_INT < Build.VERSION_CODES.S -> BackdropMode.FLAT
+      // The capture path needs API 33: on Android 12 the source's capture reaches the glass
+      // empty (seen on an API 31 emulator), so the glass would only repeat what is behind it.
+      Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> BackdropMode.FLAT
       sourceBackdrop.source == null -> BackdropMode.FLAT
       else -> BackdropMode.CAPTURE
     }
@@ -248,6 +260,8 @@ open class AndroidGlassView(context: Context, appContext: AppContext) : ExpoView
    * (a fling dropped about every third frame). Lab effects keep the full-size chain.
    */
   private fun buildCaptureEffects() {
+    val shaderRuns = effect.startsWith("liquid") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    plainTint = if (labEffect == null && !shaderRuns) tintColor ?: glassEffectStyle.tint(theme, heightDp) else 0
     val chain = effect == "liquid-blur" || effect == "blur"
     val radius = effectiveBlur * density
     // HWUI turns a blur radius r into sigma 0.57735 r + 0.5.
@@ -267,7 +281,9 @@ open class AndroidGlassView(context: Context, appContext: AppContext) : ExpoView
     captureBlur = RenderEffect.createBlurEffect(small, small, tile)
     // The glass node is the glass's own size here (the margin is only the blur's sampling room,
     // and the lens never samples outside the glass), so the shader runs on no extra pixels.
-    captureEffect = if (effect == "liquid-blur") BackdropEffects.build(params().copy(name = "liquid")) else null
+    // RuntimeShader needs API 33: on 31–32 the glass is the blur alone.
+    val shader = effect == "liquid-blur" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    captureEffect = if (shader) BackdropEffects.build(params().copy(name = "liquid")) else null
   }
 
   /** How far the glass node reaches past the glass: the margin, unless the blur is downsampled. */
@@ -377,6 +393,7 @@ open class AndroidGlassView(context: Context, appContext: AppContext) : ExpoView
     canvas.clipPath(clipPath)
     canvas.translate(-m, -m)
     canvas.drawRenderNode(node)
+    if (plainTint != 0) canvas.drawColor(plainTint)
     canvas.restoreToCount(save)
   }
 
