@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { Switch } from 'react-native';
 
-import type { AndroidGlassToggleProps } from './AndroidGlassComponents.types';
+import type { AndroidGlassToggleProps } from './AndroidGlassView.types';
 
-/** iOS and web fallback: the platform switch with the same API. */
+// iOS and web: the platform switch with the same API.
 export default function AndroidGlassToggle({
   value,
   onValueChange,
@@ -11,12 +11,16 @@ export default function AndroidGlassToggle({
   trackColor,
   ...rest
 }: AndroidGlassToggleProps) {
+  const [own, setOwn] = React.useState(false);
   return (
     <Switch
       {...rest}
-      value={value ?? false}
-      onValueChange={onValueChange}
-      trackColor={{ false: trackColor ?? undefined, true: accentColor ?? '#34C759' }}
+      value={value ?? own}
+      trackColor={{ true: accentColor ?? '#34C759', false: trackColor }}
+      onValueChange={(next) => {
+        setOwn(next);
+        onValueChange?.(next);
+      }}
     />
   );
 }

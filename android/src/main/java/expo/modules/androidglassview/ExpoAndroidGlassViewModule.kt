@@ -1,7 +1,5 @@
 package expo.modules.androidglassview
 
-import android.view.View
-import androidx.compose.ui.graphics.Color
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.views.ViewDefinitionBuilder
@@ -10,275 +8,93 @@ class ExpoAndroidGlassViewModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ExpoAndroidGlassView")
 
-    // Bumped when the backdrop capture changes in a way JS may need to know about.
-    // 2: ancestors of a sampling glass view are never drawn again through their own draw()
-    //    (0.1.1 crashed inside react-native-screens stacks).
-    Constant("captureRevision") { 3 }
+    /** What this device offers, for the lab's header. */
+    Function("getBackdropInfo") {
+      mapOf(
+        "supported" to BackdropApi.isSupported,
+        "renderNodeSupported" to BackdropApi.hasRenderNodeSetter,
+        "sdkFull" to BackdropApi.sdkFull,
+        "sdkIntFull" to BackdropApi.sdkIntFull,
+      )
+    }
+
+    /** Lab: force the capture path even where the platform backdrop exists. */
+    Function("setForceCapture") { force: Boolean -> BackdropApi.forceCapture = force }
 
     View(AndroidGlassView::class) {
       Name("AndroidGlassView")
-      Prop("theme") { view: AndroidGlassView, value: String? ->
-        view.glassState.themed = value != null
-        view.glassState.dark = value == "dark"
-      }
-
-      Prop("cornerRadius") { view: AndroidGlassView, value: Float? ->
-        view.glassState.cornerRadius = value ?: GlassState.DEFAULT_CORNER_RADIUS
-      }
-      Prop("blurGradient") { view: AndroidGlassView, value: String? ->
-        view.glassState.blurGradient = value == "top-to-bottom"
-      }
-      Prop("blurRadius") { view: AndroidGlassView, value: Float? ->
-        view.glassState.blurOverride = value
-      }
-      Prop("refractionHeight") { view: AndroidGlassView, value: Float? ->
-        view.glassState.heightOverride = value
-      }
-      Prop("refractionAmount") { view: AndroidGlassView, value: Float? ->
-        view.glassState.amountOverride = value
-      }
-      Prop("chromaticAberration") { view: AndroidGlassView, value: Boolean? ->
-        view.glassState.chromaticAberration = value ?: false
-      }
-      Prop("depthEffect") { view: AndroidGlassView, value: Boolean? ->
-        view.glassState.depthEffect = value ?: false
-      }
-      Prop("vibrancy") { view: AndroidGlassView, value: Boolean? ->
-        view.glassState.vibrancyOverride = value
-      }
-      Prop("highlight") { view: AndroidGlassView, value: Boolean? ->
-        view.glassState.highlight = value ?: true
-      }
-      Prop("shadow") { view: AndroidGlassView, value: Boolean? ->
-        view.glassState.shadow = value ?: true
-      }
-      // Colours arrive as ARGB ints from processColor() on the JS side.
-      Prop("tintColor") { view: AndroidGlassView, value: Int? ->
-        view.glassState.tintColor = value.toColorOr(Color.Unspecified)
-      }
-      Prop("surfaceColor") { view: AndroidGlassView, value: Int? ->
-        view.glassState.surfaceColor = value.toColorOr(Color.Unspecified)
-      }
-      Prop("fallbackColor") { view: AndroidGlassView, value: Int? ->
-        view.glassState.fallbackOverride = value?.let { Color(it) }
-      }
-
-      ReactChildren()
+      Events("onBackdropStatus", "onPress")
+      glassProps<AndroidGlassView>()
+      Prop("interactive") { view: AndroidGlassView, value: Boolean? -> view.interactive = value ?: false }
+      OnViewDidUpdateProps { view: AndroidGlassView -> view.commit() }
     }
 
-    View(AndroidGlassButton::class) {
-      Name("AndroidGlassButton")
-      Prop("theme") { view: AndroidGlassButton, value: String? -> view.glassState.dark = value == "dark" }
-      Events("onPress")
-
-      Prop("cornerRadius") { view: AndroidGlassButton, value: Float? ->
-        view.glassState.cornerRadius = value ?: AndroidGlassButton.DEFAULT_CORNER_RADIUS
-      }
-      Prop("blurGradient") { view: AndroidGlassButton, value: String? ->
-        view.glassState.blurGradient = value == "top-to-bottom"
-      }
-      Prop("blurRadius") { view: AndroidGlassButton, value: Float? ->
-        view.glassState.blurOverride = value
-      }
-      Prop("refractionHeight") { view: AndroidGlassButton, value: Float? ->
-        view.glassState.heightOverride = value
-      }
-      Prop("refractionAmount") { view: AndroidGlassButton, value: Float? ->
-        view.glassState.amountOverride = value
-      }
-      Prop("chromaticAberration") { view: AndroidGlassButton, value: Boolean? ->
-        view.glassState.chromaticAberration = value ?: false
-      }
-      Prop("depthEffect") { view: AndroidGlassButton, value: Boolean? ->
-        view.glassState.depthEffect = value ?: false
-      }
-      Prop("vibrancy") { view: AndroidGlassButton, value: Boolean? ->
-        view.glassState.vibrancyOverride = value
-      }
-      Prop("highlight") { view: AndroidGlassButton, value: Boolean? ->
-        view.glassState.highlight = value ?: true
-      }
-      Prop("shadow") { view: AndroidGlassButton, value: Boolean? ->
-        view.glassState.shadow = value ?: true
-      }
-      Prop("tintColor") { view: AndroidGlassButton, value: Int? ->
-        view.glassState.tintColor = value.toColorOr(Color.Unspecified)
-      }
-      Prop("surfaceColor") { view: AndroidGlassButton, value: Int? ->
-        view.glassState.surfaceColor = value.toColorOr(Color.Unspecified)
-      }
-      Prop("fallbackColor") { view: AndroidGlassButton, value: Int? ->
-        view.glassState.fallbackOverride = value?.let { Color(it) }
-      }
-      Prop("interactive") { view: AndroidGlassButton, value: Boolean? ->
-        view.interactive = value ?: true
-      }
-
-      ReactChildren()
+    View(AndroidGlassTabs::class) {
+      Name("AndroidGlassTabs")
+      Events("onBackdropStatus", "onTabSelected")
+      glassProps<AndroidGlassTabs>()
+      Prop("tabsCount") { view: AndroidGlassTabs, value: Int? -> view.tabsCount = value ?: 0 }
+      Prop("selectedIndex") { view: AndroidGlassTabs, value: Int? -> view.setSelectedIndex(value ?: 0) }
+      Prop("accentColor") { view: AndroidGlassTabs, value: Int? -> view.accentColor = value }
+      OnViewDidUpdateProps { view: AndroidGlassTabs -> view.commit() }
     }
 
-    // Toggle, slider and tab bar: the user changes the value natively too, so the value prop is
-    // only applied (once all props of an update are set) when JS has caught up; see ControlledProp.
-
-    View(AndroidGlassMenuPanel::class) {
-      Name("AndroidGlassMenuPanel")
-      Events("onItemSelected", "onClosed", "onNavigate", "onDismissRequest")
-      ReactChildren()
-      Prop("customHeight") { view: AndroidGlassMenuPanel, value: Float? -> view.customHeight = (value ?: 0f).coerceAtLeast(0f) }
-      Prop("itemsJson") { view: AndroidGlassMenuPanel, value: String -> view.setItems(value) }
-      Prop("expanded") { view: AndroidGlassMenuPanel, value: Boolean -> view.expanded = value }
-      Prop("dark") { view: AndroidGlassMenuPanel, value: Boolean -> view.dark = value }
-      Prop("isSelectMenu") { view: AndroidGlassMenuPanel, value: Boolean -> view.isSelectMenu = value }
-      Prop("shadow") { view: AndroidGlassMenuPanel, value: Boolean? -> view.shadowEnabled = value ?: true }
-      Prop("shadowOpacity") { view: AndroidGlassMenuPanel, value: Float? -> view.shadowOpacity = value?.takeIf { it.isFinite() }?.coerceIn(0f, 1f) }
-      Prop("originX") { view: AndroidGlassMenuPanel, value: Float -> view.originX = value.coerceIn(0f, 1f) }
-      Prop("originY") { view: AndroidGlassMenuPanel, value: Float -> view.originY = value.coerceIn(0f, 1f) }
-      Prop("rowHeight") { view: AndroidGlassMenuPanel, value: Float -> view.rowHeight = value.coerceAtLeast(44f) }
-      Prop("backRequest") { view: AndroidGlassMenuPanel, value: Int -> view.backRequest = value }
-      Prop("sourceIcon") { view: AndroidGlassMenuPanel, value: String? -> view.sourceIcon = value ?: "" }
+    View(GlassBackdropSource::class) {
+      Name("GlassBackdropSource")
+      Prop("name") { view: GlassBackdropSource, value: String? -> view.sourceName = value }
     }
 
     View(AndroidGlassToggle::class) {
       Name("AndroidGlassToggle")
       Events("onValueChange")
-
-      Prop("value") { view: AndroidGlassToggle, value: Boolean? ->
-        view.valueProp.value = value ?: false
-      }
-      Prop("mostRecentEventCount") { view: AndroidGlassToggle, value: Int? ->
-        view.valueProp.mostRecentEventCount = value ?: 0
-      }
-      Prop("accentColor") { view: AndroidGlassToggle, value: Int? ->
-        view.accentColor = value?.let { Color(it) }
-      }
-      Prop("trackColor") { view: AndroidGlassToggle, value: Int? ->
-        view.trackColor = value?.let { Color(it) }
-      }
-
-      OnViewDidUpdateProps { view: AndroidGlassToggle ->
-        view.applyProps()
-      }
+      Prop("value") { view: AndroidGlassToggle, value: Boolean? -> view.setValue(value ?: false) }
+      Prop("backdropSource") { view: AndroidGlassToggle, value: String? -> view.backdropSource = value }
+      Prop("theme") { view: AndroidGlassToggle, value: String? -> view.theme = GlassTheme.of(value) }
+      Prop("accentColor") { view: AndroidGlassToggle, value: Int? -> view.accentColor = value }
+      Prop("trackColor") { view: AndroidGlassToggle, value: Int? -> view.trackColor = value }
+      OnViewDidUpdateProps { view: AndroidGlassToggle -> view.invalidate() }
     }
 
     View(AndroidGlassSlider::class) {
       Name("AndroidGlassSlider")
       Events("onValueChange", "onSlidingComplete")
-
-      Prop("value") { view: AndroidGlassSlider, value: Float? ->
-        view.valueProp.value = value ?: 0f
-      }
-      Prop("mostRecentEventCount") { view: AndroidGlassSlider, value: Int? ->
-        view.valueProp.mostRecentEventCount = value ?: 0
-      }
-      Prop("minimumValue") { view: AndroidGlassSlider, value: Float? ->
-        view.minimumValue = value ?: 0f
-      }
-      Prop("maximumValue") { view: AndroidGlassSlider, value: Float? ->
-        view.maximumValue = value ?: 1f
-      }
-      Prop("accentColor") { view: AndroidGlassSlider, value: Int? ->
-        view.accentColor = value?.let { Color(it) }
-      }
-      Prop("trackColor") { view: AndroidGlassSlider, value: Int? ->
-        view.trackColor = value?.let { Color(it) }
-      }
-
-      OnViewDidUpdateProps { view: AndroidGlassSlider ->
-        view.applyProps()
-      }
-    }
-
-    View(AndroidGlassBottomTabs::class) {
-      Name("AndroidGlassBottomTabs")
-      Prop("cornerRadius") { view: AndroidGlassBottomTabs, value: Float? ->
-        view.glassState.cornerRadius = value ?: 999f
-      }
-      Prop("blurGradient") { view: AndroidGlassBottomTabs, value: String? ->
-        view.glassState.blurGradient = value == "top-to-bottom"
-      }
-      Prop("blurRadius") { view: AndroidGlassBottomTabs, value: Float? ->
-        view.glassState.blurOverride = value
-      }
-      Prop("refractionHeight") { view: AndroidGlassBottomTabs, value: Float? ->
-        view.glassState.heightOverride = value
-      }
-      Prop("refractionAmount") { view: AndroidGlassBottomTabs, value: Float? ->
-        view.glassState.amountOverride = value
-      }
-      Prop("chromaticAberration") { view: AndroidGlassBottomTabs, value: Boolean? ->
-        view.glassState.chromaticAberration = value ?: false
-      }
-      Prop("depthEffect") { view: AndroidGlassBottomTabs, value: Boolean? ->
-        view.glassState.depthEffect = value ?: false
-      }
-      Prop("vibrancy") { view: AndroidGlassBottomTabs, value: Boolean? ->
-        view.glassState.vibrancyOverride = value
-      }
-      Prop("highlight") { view: AndroidGlassBottomTabs, value: Boolean? ->
-        view.glassState.highlight = value ?: true
-      }
-      Prop("shadow") { view: AndroidGlassBottomTabs, value: Boolean? ->
-        view.glassState.shadow = value ?: true
-      }
-      Prop("tintColor") { view: AndroidGlassBottomTabs, value: Int? ->
-        view.glassState.tintColor = value.toColorOr(Color.Unspecified)
-      }
-      Prop("surfaceColor") { view: AndroidGlassBottomTabs, value: Int? ->
-        view.glassState.surfaceColor = value.toColorOr(Color.Unspecified)
-      }
-      Prop("fallbackColor") { view: AndroidGlassBottomTabs, value: Int? ->
-        view.glassState.fallbackOverride = value?.let { Color(it) }
-      }
-      Prop("theme") { view: AndroidGlassBottomTabs, value: String? -> view.glassState.dark = value == "dark" }
-      Events("onTabSelected", "onMinimizedChange")
-
-      Prop("minimized") { view: AndroidGlassBottomTabs, value: Boolean? ->
-        view.setMinimizedProp(value ?: false)
-      }
-      Prop("selectedIndex") { view: AndroidGlassBottomTabs, value: Int? ->
-        view.selectedIndexProp.value = value ?: 0
-      }
-      Prop("mostRecentEventCount") { view: AndroidGlassBottomTabs, value: Int? ->
-        view.selectedIndexProp.mostRecentEventCount = value ?: 0
-      }
-      Prop("tabsCount") { view: AndroidGlassBottomTabs, value: Int? ->
-        view.tabsCount = value ?: 1
-      }
-      Prop("accentColor") { view: AndroidGlassBottomTabs, value: Int? ->
-        view.accentColor = value?.let { Color(it) }
-      }
-      Prop("containerColor") { view: AndroidGlassBottomTabs, value: Int? ->
-        view.containerColor = value?.let { Color(it) }
-      }
-
-      OnViewDidUpdateProps { view: AndroidGlassBottomTabs ->
-        view.applyProps()
-      }
-
-      ReactChildren()
+      Prop("backdropSource") { view: AndroidGlassSlider, value: String? -> view.backdropSource = value }
+      Prop("minimumValue") { view: AndroidGlassSlider, value: Float? -> view.minimumValue = value ?: 0f }
+      Prop("maximumValue") { view: AndroidGlassSlider, value: Float? -> view.maximumValue = value ?: 1f }
+      Prop("theme") { view: AndroidGlassSlider, value: String? -> view.theme = GlassTheme.of(value) }
+      Prop("accentColor") { view: AndroidGlassSlider, value: Int? -> view.accentColor = value }
+      Prop("trackColor") { view: AndroidGlassSlider, value: Int? -> view.trackColor = value }
+      Prop("value") { view: AndroidGlassSlider, value: Float? -> view.value = value ?: 0f }
+      // Maps the value once min and max of the same update are in.
+      OnViewDidUpdateProps { view: AndroidGlassSlider -> view.commit() }
     }
   }
 }
 
-private fun Int?.toColorOr(default: Color): Color = if (this != null) Color(this) else default
-
-/** React children live after the Compose layer; see GlassHostView. */
-private inline fun <reified T : GlassHostView> ViewDefinitionBuilder<T>.ReactChildren() {
-  GroupView<T> {
-    AddChildView { parent, child: View, index ->
-      parent.addReactChild(child, index)
-    }
-    GetChildCount { parent ->
-      parent.reactChildCount
-    }
-    GetChildViewAt { parent, index ->
-      parent.getReactChildAt(index)
-    }
-    RemoveChildView { parent, child: View ->
-      parent.removeReactChild(child)
-    }
-    RemoveChildViewAt { parent, index ->
-      parent.removeReactChildAt(index)
-    }
+/** The glass props every glass view takes. */
+private inline fun <reified T : AndroidGlassView> ViewDefinitionBuilder<T>.glassProps() {
+  // Public.
+  Prop("cornerRadius") { view: T, value: Float? -> view.cornerRadius = value ?: 0f }
+  Prop("blurRadius") { view: T, value: Float? -> view.blurRadius = value }
+  Prop("glassEffectStyle") { view: T, value: String? -> view.glassEffectStyle = GlassEffectStyle.of(value) }
+  Prop("refraction") { view: T, value: Boolean? -> view.refraction = value ?: true }
+  Prop("tintColor") { view: T, value: Int? -> view.tintColor = value }
+  Prop("fallbackColor") { view: T, value: Int? -> view.fallbackColor = value }
+  Prop("theme") { view: T, value: String? -> view.theme = GlassTheme.of(value) }
+  Prop("backdropSource") { view: T, value: String? -> view.backdropSource = value }
+  // Lab only (the example's backdrop lab).
+  Prop("effect") { view: T, value: String? -> view.labEffect = value }
+  Prop("radius") { view: T, value: Float? -> view.blurRadius = value }
+  Prop("tileMode") { view: T, value: String? -> view.tileMode = value ?: "clamp" }
+  Prop("offsetX") { view: T, value: Float? -> view.offsetX = value ?: 0f }
+  Prop("offsetY") { view: T, value: Float? -> view.offsetY = value ?: 0f }
+  Prop("clip") { view: T, value: Boolean? -> view.clip = value ?: true }
+  Prop("refractionHeight") { view: T, value: Float? -> view.refractionHeight = value ?: 24f }
+  Prop("amount") { view: T, value: Float? -> view.amount = value ?: 24f }
+  Prop("selfEffect") { view: T, value: String? -> view.selfEffect = value ?: "none" }
+  Prop("margin") { view: T, value: Float? -> view.margin = value ?: 0f }
+  Prop("uniforms") { view: T, value: Map<String, Double>? ->
+    view.uniforms = value?.mapValues { it.value.toFloat() } ?: emptyMap()
   }
+  Prop("strokeColor") { view: T, value: Int? -> view.strokeColor = value }
 }
