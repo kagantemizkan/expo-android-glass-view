@@ -16,6 +16,8 @@ config.resolver.blockList = [
   ...['react', 'react-native'].map(
     (name) => new RegExp(`${escapeRegex(path.join(repositoryRoot, 'node_modules', name))}[/\\\\].*`)
   ),
+  // Native build output holds no JS, and CocoaPods' symlinked xcframeworks break the file map.
+  new RegExp(`${escapeRegex(path.join(__dirname, 'ios'))}[/\\\\](Pods|build)[/\\\\].*`),
 ];
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'expo-android-glass-view') {

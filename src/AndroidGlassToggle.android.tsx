@@ -1,26 +1,26 @@
 import { requireNativeView } from 'expo';
 import * as React from 'react';
-import { StyleSheet } from 'react-native';
+import { processColor, StyleSheet } from 'react-native';
 
-import type { AndroidGlassToggleProps } from './AndroidGlassComponents.types';
-import { type NativeColor, toNativeColor } from './utils';
+import type { AndroidGlassToggleProps } from './AndroidGlassView.types';
 
-type ValueEvent = { nativeEvent: { value: boolean; eventCount: number } };
-
-type NativeAndroidGlassToggleProps = Omit<
-  AndroidGlassToggleProps,
-  'onValueChange' | 'accentColor' | 'trackColor'
-> & {
-  /** Count of the last change event handled here (see ControlledProp on the native side). */
-  mostRecentEventCount: number;
-  onValueChange: (event: ValueEvent) => void;
-  accentColor?: NativeColor;
-  trackColor?: NativeColor;
+type NativeProps = Omit<AndroidGlassToggleProps, 'onValueChange' | 'accentColor' | 'trackColor'> & {
+  onValueChange: (event: { nativeEvent: { value: boolean } }) => void;
+  accentColor?: number | null;
+  trackColor?: number | null;
 };
 
-const NativeAndroidGlassToggle: React.ComponentType<NativeAndroidGlassToggleProps> =
-  requireNativeView('ExpoAndroidGlassView', 'AndroidGlassToggle');
+const NativeAndroidGlassToggle: React.ComponentType<NativeProps> = requireNativeView(
+  'ExpoAndroidGlassView',
+  'AndroidGlassToggle'
+);
 
+function toNative(color: AndroidGlassToggleProps['accentColor']) {
+  const value = color == null ? null : processColor(color);
+  return typeof value === 'number' ? value : null;
+}
+
+/** A glass switch: tap to flip, or drag the thumb. Without `value`, it keeps its own state. */
 export default function AndroidGlassToggle({
   value,
   onValueChange,
@@ -29,12 +29,8 @@ export default function AndroidGlassToggle({
   style,
   ...rest
 }: AndroidGlassToggleProps) {
-  // Without a `value` prop, the switch keeps the user's choice.
-  const [ownValue, setOwnValue] = React.useState(false);
-  // Sent back with `value`, so the native side can tell a stale value (JS still catching up with
-  // earlier changes) from a current one.
-  const [eventCount, setEventCount] = React.useState(0);
-  const checked = value ?? ownValue;
+  const [own, setOwn] = React.useState(false);
+  const checked = value ?? own;
   return (
     <NativeAndroidGlassToggle
       accessibilityRole="switch"
@@ -42,23 +38,17 @@ export default function AndroidGlassToggle({
       {...rest}
       style={[styles.toggle, style]}
       value={checked}
-      mostRecentEventCount={eventCount}
-      accentColor={toNativeColor(accentColor)}
-      trackColor={toNativeColor(trackColor)}
+      accentColor={toNative(accentColor)}
+      trackColor={toNative(trackColor)}
       onValueChange={(event) => {
-        const { value: next, eventCount: count } = event.nativeEvent;
-        setEventCount((current) => Math.max(current, count));
-        setOwnValue(next);
-        onValueChange?.(next);
+        setOwn(event.nativeEvent.value);
+        onValueChange?.(event.nativeEvent.value);
       }}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  // The track is 64 × 28 dp; the thumb grows past it while pressed.
-  toggle: {
-    width: 64,
-    height: 28,
-  },
+  // The 64×28dp track, with room for the thumb to swell.
+  toggle: { width: 64, height: 28 },
 });

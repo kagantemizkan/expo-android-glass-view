@@ -1,7 +1,7 @@
 {
   "name": "expo-android-glass-view",
-  "version": "1.0.3",
-  "description": "Liquid Glass views, buttons, sliders and toggles for React Native on Android (Jetpack Compose, powered by Kyant0/AndroidLiquidGlass)",
+  "version": "2.0.0",
+  "description": "iOS 26 Liquid Glass for React Native on Android: glass views, a tab bar, a toggle and a slider",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
@@ -11,8 +11,7 @@
     "test": "node internal/module_scripts/test.js",
     "prepare": "node internal/module_scripts/prepare.js",
     "open:ios": "node internal/module_scripts/open-ios.js",
-    "open:android": "node internal/module_scripts/open-android.js",
-    "test:unit": "jest --config internal/jest-unit.config.cjs --runInBand"
+    "open:android": "node internal/module_scripts/open-android.js"
   },
   "keywords": [
     "react-native",
@@ -20,7 +19,7 @@
     "android",
     "liquid-glass",
     "glassmorphism",
-    "jetpack-compose",
+    "ios-26",
     "expo-android-glass-view"
   ],
   "repository": "https://github.com/kagantemizkan/expo-android-glass-view",

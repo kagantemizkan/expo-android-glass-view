@@ -1,31 +1,36 @@
 import { requireNativeView } from 'expo';
-import * as React from 'react';
-import { StyleSheet } from 'react-native';
+import type * as React from 'react';
+import { processColor, StyleSheet } from 'react-native';
 
-import type { AndroidGlassSliderProps } from './AndroidGlassComponents.types';
-import { type NativeColor, toNativeColor } from './utils';
+import type { AndroidGlassSliderProps } from './AndroidGlassView.types';
 
-type ValueEvent = { nativeEvent: { value: number; eventCount: number } };
+type ValueEvent = { nativeEvent: { value: number } };
 
-type NativeAndroidGlassSliderProps = Omit<
+type NativeProps = Omit<
   AndroidGlassSliderProps,
   'onValueChange' | 'onSlidingComplete' | 'accentColor' | 'trackColor'
 > & {
-  /** Count of the last event handled here (see ControlledProp on the native side). */
-  mostRecentEventCount: number;
   onValueChange: (event: ValueEvent) => void;
   onSlidingComplete: (event: ValueEvent) => void;
-  accentColor?: NativeColor;
-  trackColor?: NativeColor;
+  accentColor?: number | null;
+  trackColor?: number | null;
 };
 
-const NativeAndroidGlassSlider: React.ComponentType<NativeAndroidGlassSliderProps> =
-  requireNativeView('ExpoAndroidGlassView', 'AndroidGlassSlider');
+const NativeAndroidGlassSlider: React.ComponentType<NativeProps> = requireNativeView(
+  'ExpoAndroidGlassView',
+  'AndroidGlassSlider'
+);
 
+function toNative(color: AndroidGlassSliderProps['accentColor']) {
+  const value = color == null ? null : processColor(color);
+  return typeof value === 'number' ? value : null;
+}
+
+/** A glass slider: press anywhere to move the thumb there, then drag. */
 export default function AndroidGlassSlider({
   value,
-  minimumValue,
-  maximumValue,
+  minimumValue = 0,
+  maximumValue = 1,
   onValueChange,
   onSlidingComplete,
   accentColor,
@@ -33,38 +38,23 @@ export default function AndroidGlassSlider({
   style,
   ...rest
 }: AndroidGlassSliderProps) {
-  const min = minimumValue ?? 0;
-  // Without a `value` prop, the slider keeps the position the user gives it.
-  const [ownValue, setOwnValue] = React.useState(min);
-  // Sent back with `value`, so the native side can tell a stale value (JS still catching up with
-  // earlier events) from a current one.
-  const [eventCount, setEventCount] = React.useState(0);
-  const handleEvent = (event: ValueEvent) => {
-    const { value: next, eventCount: count } = event.nativeEvent;
-    setEventCount((current) => Math.max(current, count));
-    setOwnValue(next);
-    return next;
-  };
   return (
     <NativeAndroidGlassSlider
       accessibilityRole="adjustable"
+      accessibilityValue={{ min: minimumValue, max: maximumValue, now: value }}
       {...rest}
       style={[styles.slider, style]}
-      value={value ?? ownValue}
-      minimumValue={min}
-      maximumValue={maximumValue ?? 1}
-      mostRecentEventCount={eventCount}
-      accentColor={toNativeColor(accentColor)}
-      trackColor={toNativeColor(trackColor)}
-      onValueChange={(event) => onValueChange?.(handleEvent(event))}
-      onSlidingComplete={(event) => onSlidingComplete?.(handleEvent(event))}
+      value={value ?? minimumValue}
+      minimumValue={minimumValue}
+      maximumValue={maximumValue}
+      accentColor={toNative(accentColor)}
+      trackColor={toNative(trackColor)}
+      onValueChange={(event) => onValueChange?.(event.nativeEvent.value)}
+      onSlidingComplete={(event) => onSlidingComplete?.(event.nativeEvent.value)}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  slider: {
-    height: 36,
-    alignSelf: 'stretch',
-  },
+  slider: { height: 40, alignSelf: 'stretch' },
 });

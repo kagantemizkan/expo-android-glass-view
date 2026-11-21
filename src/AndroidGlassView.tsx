@@ -1,43 +1,27 @@
-import * as React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import type { AndroidGlassViewProps } from './AndroidGlassView.types';
 
-const DEFAULT_FALLBACK_COLOR = 'rgba(255, 255, 255, 0.7)';
-
-/**
- * iOS and web fallback: the glass effect is Android-only, so render a plain translucent surface
- * with the same shape. Children render as usual.
- */
+// iOS and web: a plain view with the same API, coloured with the tint (or the fallback colour).
 export default function AndroidGlassView({
-  theme,
   cornerRadius,
+  tintColor,
   fallbackColor,
-  blurRadius: _blurRadius,
-  blurGradient: _blurGradient,
-  refractionHeight: _refractionHeight,
-  refractionAmount: _refractionAmount,
-  chromaticAberration: _chromaticAberration,
-  depthEffect: _depthEffect,
-  vibrancy: _vibrancy,
-  highlight: _highlight,
-  shadow: _shadow,
-  tintColor: _tintColor,
-  surfaceColor: _surfaceColor,
+  theme,
+  interactive,
+  onPress,
   style,
   ...rest
 }: AndroidGlassViewProps) {
-  return (
-    <View
-      {...rest}
-      style={[
-        {
-          backgroundColor: fallbackColor ?? (theme === 'dark' ? '#242b33' : DEFAULT_FALLBACK_COLOR),
-          borderRadius: cornerRadius ?? 24,
-          overflow: 'hidden',
-        },
-        style,
-      ]}
-    />
-  );
+  const surface = {
+    borderRadius: cornerRadius,
+    backgroundColor:
+      tintColor ??
+      fallbackColor ??
+      (theme === 'dark' ? 'rgba(28,28,30,0.8)' : 'rgba(242,242,247,0.8)'),
+  };
+  if (interactive) {
+    return <Pressable {...rest} onPress={onPress} style={[surface, style]} />;
+  }
+  return <View {...rest} style={[surface, style]} />;
 }
