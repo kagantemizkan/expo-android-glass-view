@@ -3,6 +3,7 @@ package expo.modules.androidglassview
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.util.lerp
 import com.facebook.react.uimanager.PointerEvents
 import com.facebook.react.uimanager.ReactPointerEventsView
+import com.facebook.react.uimanager.events.NativeGestureUtil
 import expo.modules.androidglassview.components.LiquidBottomTabs
 import expo.modules.androidglassview.components.TabsFrame
 import expo.modules.kotlin.AppContext
@@ -32,13 +34,13 @@ class AndroidGlassBottomTabs(context: Context, appContext: AppContext) : GlassHo
 
   override val drawsReactChildrenInCompose: Boolean = true
   override val excludesReactChildrenFromTouchTargets: Boolean = true
+  override fun composeLayerPointerEvents(): PointerEvents = PointerEvents.BOX_NONE
+
   // This host's Compose layer arbitrates capsule touches itself. Let sibling hit testing continue
   // outside the rendered tab children instead of making the full React view bounds opaque.
   override val pointerEvents: PointerEvents = PointerEvents.BOX_NONE
   internal val glassState = GlassState().apply { cornerRadius = 999f }
   private var interactiveBarBounds: CapsuleHitArea? = null
-
-  override val claimsHorizontalDrags: Boolean = true
 
   internal var selectedIndex by mutableIntStateOf(0)
     private set
@@ -57,16 +59,17 @@ class AndroidGlassBottomTabs(context: Context, appContext: AppContext) : GlassHo
   private val onMinimizedChange by EventDispatcher()
   private val selectedIndexProvider: () -> Int = { selectedIndex }
   private val minimizedProvider: () -> Boolean = { minimized }
+  private var touchSequenceAccepted = false
 
-  internal fun updateInteractiveBounds(bounds: Rect, horizontalOffset: Float) {
+  internal fun updateInteractiveBounds(bounds: Rect) {
     val density = resources.displayMetrics.density
     interactiveBarBounds = CapsuleHitArea(
-      left = bounds.left + horizontalOffset,
+      left = bounds.left,
       top = bounds.top,
-      right = bounds.right + horizontalOffset,
+      right = bounds.right,
       bottom = bounds.bottom,
       cornerRadiusPx = glassState.cornerRadius * density,
-      tolerancePx = 2f * density
+      tolerancePx = 4f * density
     )
   }
 
@@ -75,6 +78,27 @@ class AndroidGlassBottomTabs(context: Context, appContext: AppContext) : GlassHo
 
   override fun reactTagForComposeTouch(x: Float, y: Float): Int? =
     id.takeIf { containsInteractivePoint(x, y) }
+
+  override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+    if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+      touchSequenceAccepted = containsInteractivePoint(event.x, event.y)
+      if (!touchSequenceAccepted) return false
+      parent?.requestDisallowInterceptTouchEvent(true)
+      NativeGestureUtil.notifyNativeGestureStarted(this, event)
+    } else if (!touchSequenceAccepted) {
+      return false
+    }
+
+    // Compose classifies vertical movement separately from tab scrubbing.
+    trackHorizontalDrag(event, notifyGestureEvents = false)
+    val handled = super.dispatchTouchEvent(event)
+    val keepTouchSequence = touchSequenceAccepted
+    if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+      NativeGestureUtil.notifyNativeGestureEnded(this, event)
+      touchSequenceAccepted = false
+    }
+    return handled || keepTouchSequence
+  }
 
   // Touching a minimized bar brings it back, like on iOS; JS is told so it can stay in sync.
   private val expand: () -> Unit = {
@@ -125,8 +149,8 @@ class AndroidGlassBottomTabs(context: Context, appContext: AppContext) : GlassHo
       onExpand = expand,
       accentColor = accentColor,
       containerColor = containerColor,
-      onInteractiveBoundsChanged = { bounds, horizontalOffset ->
-        updateInteractiveBounds(bounds, horizontalOffset)
+      onInteractiveBoundsChanged = { bounds ->
+        updateInteractiveBounds(bounds)
       }
     )
   }

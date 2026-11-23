@@ -72,6 +72,9 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   /** Maps touches inside a Compose-owned shape to this React node during RN hit testing. */
   protected open fun reactTagForComposeTouch(x: Float, y: Float): Int? = null
 
+  /** Pointer policy for the Compose layer's hit proxy. */
+  protected open fun composeLayerPointerEvents(): PointerEvents = PointerEvents.NONE
+
   /** Bumped whenever the React children may look different; read it while drawing them. */
   internal var reactChildrenGeneration by mutableIntStateOf(0)
     private set
@@ -91,7 +94,7 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   }
   private val composeLayer = GlassComposeLayer(
     context = context,
-    usesCapsuleHitTesting = this is AndroidGlassBottomTabs,
+    pointerEventsForTouchTarget = composeLayerPointerEvents(),
     touchTargetTagAt = { x, y -> reactTagForComposeTouch(x, y) }
   ).apply {
     clipChildren = false
@@ -112,7 +115,6 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   private var downX = 0f
   private var downY = 0f
   private var dragClaimed = false
-  private var tabBarTouchAccepted = false
 
   // Re-sample when the glass moves on screen (layout, an ancestor scrolling, transforms).
   private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
@@ -307,28 +309,6 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
   // region Touch
 
   override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-    val bottomTabs = this as? AndroidGlassBottomTabs
-    if (bottomTabs != null) {
-      if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-        tabBarTouchAccepted = bottomTabs.containsInteractivePoint(event.x, event.y)
-        if (!tabBarTouchAccepted) return false
-        parent?.requestDisallowInterceptTouchEvent(true)
-        NativeGestureUtil.notifyNativeGestureStarted(this, event)
-      } else if (!tabBarTouchAccepted) {
-        return false
-      }
-
-      // The Compose recognizer still classifies vertical movement separately from tab scrubbing.
-      trackHorizontalDrag(event, notifyGestureEvents = false)
-      val handled = super.dispatchTouchEvent(event)
-      val keepTouchSequence = tabBarTouchAccepted
-      if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
-        NativeGestureUtil.notifyNativeGestureEnded(this, event)
-        tabBarTouchAccepted = false
-      }
-      return handled || keepTouchSequence
-    }
-
     if (claimsHorizontalDrags) trackHorizontalDrag(event)
     return super.dispatchTouchEvent(event)
   }
@@ -337,7 +317,7 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
    * Once a drag on this view turns out to be horizontal, stop scrolling parents from stealing it
    * and tell React Native's JS responder system that a native gesture took over.
    */
-  private fun trackHorizontalDrag(event: MotionEvent, notifyGestureEvents: Boolean = true) {
+  protected fun trackHorizontalDrag(event: MotionEvent, notifyGestureEvents: Boolean = true) {
     when (event.actionMasked) {
       MotionEvent.ACTION_DOWN -> {
         downX = event.x
@@ -408,11 +388,10 @@ abstract class GlassHostView(context: Context, appContext: AppContext) : ExpoVie
 /** React Native hit proxy for Compose-owned content inside the rendered capsule. */
 private class GlassComposeLayer(
   context: Context,
-  private val usesCapsuleHitTesting: Boolean,
+  pointerEventsForTouchTarget: PointerEvents,
   private val touchTargetTagAt: (Float, Float) -> Int?
 ) : FrameLayout(context), ReactPointerEventsView, ReactCompoundView {
-  override val pointerEvents: PointerEvents =
-    if (usesCapsuleHitTesting) PointerEvents.BOX_NONE else PointerEvents.NONE
+  override val pointerEvents: PointerEvents = pointerEventsForTouchTarget
 
   override fun reactTagForTouch(touchX: Float, touchY: Float): Int =
     touchTargetTagAt(touchX, touchY) ?: id
